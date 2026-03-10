@@ -1,0 +1,9 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+PHP_BIN="$(brew --prefix php@8.4)/bin/php"
+
+"$PHP_BIN" artisan native:migrate --force
+
+exec "$PHP_BIN" artisan native:run --no-queue "$@"

@@ -1,0 +1,487 @@
+<div class="flex h-screen" wire:poll.500ms="pollLogs">
+
+    {{-- Sidebar --}}
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+        {{-- App Header / Drag Region --}}
+        <div class="h-12 flex items-center px-4 border-b border-slate-800 drag" style="-webkit-app-region: drag;">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-md bg-emerald-500 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                </div>
+                <span class="font-semibold text-sm text-white tracking-tight">LaraGuard</span>
+            </div>
+        </div>
+
+        {{-- New Scan Button --}}
+        <div class="p-3">
+            <button wire:click="newScan" class="w-full px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors">
+                + New Scan
+            </button>
+        </div>
+
+        {{-- Scan History --}}
+        <div class="flex-1 overflow-y-auto px-3 pb-3">
+            <p class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 px-1">History</p>
+            @foreach ($this->history as $scan)
+                <div
+                    class="w-full text-left px-3 py-2.5 rounded-lg mb-1 transition-colors group
+                        {{ $selectedHistoryId === $scan->id ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300' }}"
+                >
+                    <div class="flex items-center justify-between">
+                        <button wire:click="loadScan({{ $scan->id }})" class="text-xs font-mono truncate flex-1 text-left">
+                            {{ basename($scan->project_path) }}
+                        </button>
+                        <button wire:click="deleteScan({{ $scan->id }})" class="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 ml-1">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1">
+                        @if ($scan->status === 'completed')
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        @elseif ($scan->status === 'running')
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        @elseif ($scan->status === 'failed')
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                        @else
+                            <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                        @endif
+                        <span class="text-[10px] text-slate-500">{{ $scan->created_at->diffForHumans() }}</span>
+                        @if ($scan->findings_count > 0)
+                            <span class="text-[10px] text-amber-400">{{ $scan->findings_count }} findings</span>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </aside>
+
+    {{-- Main Content --}}
+    <main class="flex-1 flex flex-col min-w-0">
+        {{-- Title Bar Drag Region --}}
+        <div class="h-12 bg-slate-900/50 border-b border-slate-800 flex items-center justify-between px-4" style="-webkit-app-region: drag;">
+            <div class="flex items-center gap-3 no-drag" style="-webkit-app-region: no-drag;">
+                @if ($projectPath)
+                    <span class="text-xs font-mono text-slate-400 bg-slate-800 px-2 py-1 rounded">{{ $projectPath }}</span>
+                @endif
+            </div>
+            <div class="flex items-center gap-2">
+                @if ($status === 'running')
+                    <span class="text-xs text-amber-400 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        Scanning...
+                    </span>
+                @elseif ($status === 'completed')
+                    <span class="text-xs text-emerald-400">Scan complete</span>
+                @elseif ($status === 'failed')
+                    <span class="text-xs text-red-400">Scan failed</span>
+                @endif
+            </div>
+        </div>
+
+        @if ($showSetup)
+            {{-- Setup Screen --}}
+            <div class="flex-1 flex items-center justify-center p-8">
+                <div class="max-w-md w-full bg-slate-900 rounded-xl border border-slate-800 p-8">
+                    <div class="text-center mb-6">
+                        <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                        </div>
+                        <h2 class="text-lg font-semibold text-white">Setup Required</h2>
+                        <p class="text-sm text-slate-400 mt-2">LaraGuard needs the following tools installed:</p>
+                    </div>
+
+                    <div class="space-y-2 mb-6">
+                        @php $allTools = ['trivy', 'semgrep', 'gitleaks', 'jq']; @endphp
+                        @foreach ($allTools as $tool)
+                            <div class="flex items-center justify-between px-3 py-2 bg-slate-800 rounded-lg">
+                                <span class="text-sm font-mono text-slate-300">{{ $tool }}</span>
+                                @if (in_array($tool, $missingTools))
+                                    <span class="text-xs text-red-400">Missing</span>
+                                @else
+                                    <span class="text-xs text-emerald-400">Installed</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button wire:click="installTools" class="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors">
+                            Install via Homebrew
+                        </button>
+                        <button wire:click="recheckTools" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition-colors">
+                            Recheck
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @else
+            {{-- Scanner UI --}}
+            <div class="flex-1 flex flex-col overflow-hidden">
+
+                {{-- Scan Config Bar --}}
+                <div class="bg-slate-900/30 border-b border-slate-800 p-4">
+                    <div class="flex items-center gap-3">
+                        {{-- Folder Picker --}}
+                        <button wire:click="selectFolder" class="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors text-sm">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                            </svg>
+                            <span class="text-slate-300">{{ $projectPath ? basename($projectPath) : 'Select Folder' }}</span>
+                        </button>
+
+                        {{-- Exclusions --}}
+                        <div class="flex-1 flex items-center gap-2 flex-wrap">
+                            @foreach ($exclusions as $index => $exc)
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-400">
+                                    {{ $exc }}
+                                    <button wire:click="removeExclusion({{ $index }})" class="text-slate-500 hover:text-red-400">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </span>
+                            @endforeach
+                            <div class="flex items-center gap-1">
+                                <input
+                                    type="text"
+                                    wire:model="newExclusion"
+                                    wire:keydown.enter="addExclusion"
+                                    placeholder="+ exclude"
+                                    class="w-20 px-2 py-1 bg-transparent border border-slate-700 rounded text-xs text-slate-400 placeholder-slate-600 focus:outline-none focus:border-slate-500"
+                                >
+                            </div>
+                        </div>
+
+                        {{-- Scan Button --}}
+                        <button
+                            wire:click="startScan"
+                            @disabled(!$projectPath || $status === 'running')
+                            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                        >
+                            @if ($status === 'running')
+                                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                Scanning...
+                            @else
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                </svg>
+                                Scan
+                            @endif
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Tabs --}}
+                <div class="flex items-center border-b border-slate-800 bg-slate-900/20">
+                    @foreach (['log' => 'Log', 'summary' => 'Summary', 'trivy' => 'Trivy', 'semgrep' => 'Semgrep', 'gitleaks' => 'Gitleaks'] as $tab => $label)
+                        <button
+                            wire:click="$set('activeTab', '{{ $tab }}')"
+                            class="px-4 py-2.5 text-xs font-medium transition-colors border-b-2
+                                {{ $activeTab === $tab
+                                    ? 'text-emerald-400 border-emerald-400'
+                                    : 'text-slate-500 border-transparent hover:text-slate-300' }}"
+                        >
+                            {{ $label }}
+                            @if ($tab === 'trivy' && isset($results['summary']['trivy_total']) && $results['summary']['trivy_total'] > 0)
+                                <span class="ml-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">{{ $results['summary']['trivy_total'] }}</span>
+                            @elseif ($tab === 'semgrep' && isset($results['summary']['semgrep_total']) && $results['summary']['semgrep_total'] > 0)
+                                <span class="ml-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">{{ $results['summary']['semgrep_total'] }}</span>
+                            @elseif ($tab === 'gitleaks' && isset($results['summary']['gitleaks_total']) && $results['summary']['gitleaks_total'] > 0)
+                                <span class="ml-1 px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">{{ $results['summary']['gitleaks_total'] }}</span>
+                            @endif
+                        </button>
+                    @endforeach
+
+                    @if ($results)
+                        <div class="flex-1"></div>
+                        <button wire:click="exportJson" class="px-3 py-1.5 mr-3 text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded transition-colors">
+                            Export JSON
+                        </button>
+                    @endif
+                </div>
+
+                {{-- Tab Content --}}
+                <div class="flex-1 overflow-y-auto">
+
+                    {{-- Log Tab --}}
+                    @if ($activeTab === 'log')
+                        <div class="p-4 font-mono text-xs space-y-0.5" id="log-container">
+                            @forelse ($logs as $log)
+                                <div class="flex items-start gap-3 py-0.5">
+                                    <span class="text-slate-600 shrink-0">{{ $log['time'] }}</span>
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0
+                                        {{ match($log['scanner']) {
+                                            'trivy' => 'bg-blue-500/10 text-blue-400',
+                                            'semgrep' => 'bg-purple-500/10 text-purple-400',
+                                            'gitleaks' => 'bg-amber-500/10 text-amber-400',
+                                            default => 'bg-slate-500/10 text-slate-500'
+                                        } }}">{{ $log['scanner'] }}</span>
+                                    <span class="{{ $log['level'] === 'error' ? 'text-red-400' : 'text-slate-300' }} break-all">{{ $log['line'] }}</span>
+                                </div>
+                            @empty
+                                <div class="flex items-center justify-center h-64 text-slate-600">
+                                    <p>Select a folder and click Scan to begin.</p>
+                                </div>
+                            @endforelse
+                        </div>
+
+                    {{-- Summary Tab --}}
+                    @elseif ($activeTab === 'summary')
+                        @if ($results && isset($results['summary']))
+                            <div class="p-6 space-y-6">
+                                {{-- Grand Total --}}
+                                <div class="grid grid-cols-4 gap-4">
+                                    @php
+                                        $grandTotal = ($results['summary']['trivy_total'] ?? 0) + ($results['summary']['semgrep_total'] ?? 0) + ($results['summary']['gitleaks_total'] ?? 0);
+                                    @endphp
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                        <p class="text-xs text-slate-500 uppercase tracking-wider">Total Findings</p>
+                                        <p class="text-3xl font-bold mt-1 {{ $grandTotal > 0 ? 'text-amber-400' : 'text-emerald-400' }}">{{ $grandTotal }}</p>
+                                    </div>
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                        <p class="text-xs text-slate-500 uppercase tracking-wider">Dependencies (Trivy)</p>
+                                        <p class="text-3xl font-bold mt-1 text-blue-400">{{ $results['summary']['trivy_total'] ?? 0 }}</p>
+                                    </div>
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                        <p class="text-xs text-slate-500 uppercase tracking-wider">Code (Semgrep)</p>
+                                        <p class="text-3xl font-bold mt-1 text-purple-400">{{ $results['summary']['semgrep_total'] ?? 0 }}</p>
+                                    </div>
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                        <p class="text-xs text-slate-500 uppercase tracking-wider">Secrets (Gitleaks)</p>
+                                        <p class="text-3xl font-bold mt-1 text-red-400">{{ $results['summary']['gitleaks_total'] ?? 0 }}</p>
+                                    </div>
+                                </div>
+
+                                {{-- Severity Breakdown --}}
+                                @if (isset($results['summary']['trivy']))
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                                        <h3 class="text-sm font-semibold text-white mb-3">Trivy Severity Breakdown</h3>
+                                        <div class="grid grid-cols-4 gap-3">
+                                            @foreach (['CRITICAL' => 'bg-red-500', 'HIGH' => 'bg-orange-500', 'MEDIUM' => 'bg-yellow-500', 'LOW' => 'bg-blue-500'] as $sev => $color)
+                                                <div class="flex items-center gap-2">
+                                                    <span class="w-2.5 h-2.5 rounded-full {{ $color }}"></span>
+                                                    <span class="text-xs text-slate-400">{{ $sev }}</span>
+                                                    <span class="text-sm font-semibold text-white ml-auto">{{ $results['summary']['trivy'][$sev] ?? 0 }}</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if (isset($results['summary']['semgrep']))
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                                        <h3 class="text-sm font-semibold text-white mb-3">Semgrep Severity Breakdown</h3>
+                                        <div class="grid grid-cols-3 gap-3">
+                                            @foreach (['ERROR' => 'bg-red-500', 'WARNING' => 'bg-yellow-500', 'INFO' => 'bg-blue-500'] as $sev => $color)
+                                                <div class="flex items-center gap-2">
+                                                    <span class="w-2.5 h-2.5 rounded-full {{ $color }}"></span>
+                                                    <span class="text-xs text-slate-400">{{ $sev }}</span>
+                                                    <span class="text-sm font-semibold text-white ml-auto">{{ $results['summary']['semgrep'][$sev] ?? 0 }}</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Summary Text --}}
+                                @if (isset($results['summary']['text']))
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                                        <h3 class="text-sm font-semibold text-white mb-3">Raw Summary</h3>
+                                        <pre class="text-xs text-slate-300 font-mono whitespace-pre-wrap">{{ $results['summary']['text'] }}</pre>
+                                    </div>
+                                @endif
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center h-64 text-slate-600">
+                                <p>Run a scan to see the summary.</p>
+                            </div>
+                        @endif
+
+                    {{-- Trivy Tab --}}
+                    @elseif ($activeTab === 'trivy')
+                        @if ($results && isset($results['trivy']))
+                            <div class="p-4">
+                                @foreach ($results['trivy']['Results'] ?? [] as $result)
+                                    @if (!empty($result['Vulnerabilities']))
+                                        <div class="mb-6">
+                                            <div class="flex items-center gap-2 mb-3">
+                                                <span class="text-sm font-semibold text-white">{{ $result['Target'] ?? 'Unknown' }}</span>
+                                                <span class="text-xs text-slate-500">({{ $result['Type'] ?? '' }})</span>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-xs">
+                                                    <thead>
+                                                        <tr class="text-left text-slate-500 border-b border-slate-800">
+                                                            <th class="pb-2 pr-4">Severity</th>
+                                                            <th class="pb-2 pr-4">CVE</th>
+                                                            <th class="pb-2 pr-4">Package</th>
+                                                            <th class="pb-2 pr-4">Installed</th>
+                                                            <th class="pb-2 pr-4">Fixed</th>
+                                                            <th class="pb-2">Title</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach ($result['Vulnerabilities'] as $vuln)
+                                                            <tr class="border-b border-slate-800/50 hover:bg-slate-900/50">
+                                                                <td class="py-2 pr-4">
+                                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
+                                                                        {{ match($vuln['Severity'] ?? '') {
+                                                                            'CRITICAL' => 'bg-red-500/20 text-red-400',
+                                                                            'HIGH' => 'bg-orange-500/20 text-orange-400',
+                                                                            'MEDIUM' => 'bg-yellow-500/20 text-yellow-400',
+                                                                            'LOW' => 'bg-blue-500/20 text-blue-400',
+                                                                            default => 'bg-slate-500/20 text-slate-400'
+                                                                        } }}">{{ $vuln['Severity'] ?? 'N/A' }}</span>
+                                                                </td>
+                                                                <td class="py-2 pr-4 font-mono text-slate-300">{{ $vuln['VulnerabilityID'] ?? '' }}</td>
+                                                                <td class="py-2 pr-4 text-slate-300">{{ $vuln['PkgName'] ?? '' }}</td>
+                                                                <td class="py-2 pr-4 font-mono text-slate-500">{{ $vuln['InstalledVersion'] ?? '' }}</td>
+                                                                <td class="py-2 pr-4 font-mono text-emerald-400">{{ $vuln['FixedVersion'] ?? 'N/A' }}</td>
+                                                                <td class="py-2 text-slate-400 max-w-xs truncate">{{ $vuln['Title'] ?? $vuln['Description'] ?? '' }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    @endif
+                                @endforeach
+                                @if (empty($results['trivy']['Results'] ?? []) || collect($results['trivy']['Results'] ?? [])->every(fn ($r) => empty($r['Vulnerabilities'])))
+                                    <div class="flex items-center justify-center h-64 text-emerald-400">
+                                        <div class="text-center">
+                                            <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <p class="text-sm">No dependency vulnerabilities found.</p>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center h-64 text-slate-600">
+                                <p>No Trivy results available.</p>
+                            </div>
+                        @endif
+
+                    {{-- Semgrep Tab --}}
+                    @elseif ($activeTab === 'semgrep')
+                        @if ($results && isset($results['semgrep']))
+                            <div class="p-4 space-y-2">
+                                @forelse ($results['semgrep']['results'] ?? [] as $finding)
+                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
+                                                    {{ match($finding['extra']['severity'] ?? '') {
+                                                        'ERROR' => 'bg-red-500/20 text-red-400',
+                                                        'WARNING' => 'bg-yellow-500/20 text-yellow-400',
+                                                        default => 'bg-blue-500/20 text-blue-400'
+                                                    } }}">{{ $finding['extra']['severity'] ?? 'INFO' }}</span>
+                                                <span class="text-xs font-mono text-slate-400">{{ $finding['check_id'] ?? '' }}</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-sm text-slate-300 mb-2">{{ $finding['extra']['message'] ?? '' }}</p>
+                                        <div class="flex items-center gap-3 text-xs text-slate-500">
+                                            <span class="font-mono">{{ $finding['path'] ?? '' }}:{{ $finding['start']['line'] ?? '' }}</span>
+                                        </div>
+                                        @if (isset($finding['extra']['lines']))
+                                            <pre class="mt-2 p-2 bg-slate-950 rounded text-xs font-mono text-slate-400 overflow-x-auto">{{ $finding['extra']['lines'] }}</pre>
+                                        @endif
+                                    </div>
+                                @empty
+                                    <div class="flex items-center justify-center h-64 text-emerald-400">
+                                        <div class="text-center">
+                                            <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <p class="text-sm">No static analysis findings.</p>
+                                        </div>
+                                    </div>
+                                @endforelse
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center h-64 text-slate-600">
+                                <p>No Semgrep results available.</p>
+                            </div>
+                        @endif
+
+                    {{-- Gitleaks Tab --}}
+                    @elseif ($activeTab === 'gitleaks')
+                        @if ($results && isset($results['gitleaks']))
+                            <div class="p-4 space-y-2">
+                                @forelse ($results['gitleaks'] ?? [] as $secret)
+                                    <div class="bg-slate-900 border border-red-900/30 rounded-lg p-4">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-400">SECRET</span>
+                                                <span class="text-xs font-mono text-slate-400">{{ $secret['RuleID'] ?? '' }}</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-sm text-slate-300 mb-2">{{ $secret['Description'] ?? '' }}</p>
+                                        <div class="grid grid-cols-2 gap-2 text-xs text-slate-500 mt-3">
+                                            <div>
+                                                <span class="text-slate-600">File:</span>
+                                                <span class="font-mono text-slate-400 ml-1">{{ $secret['File'] ?? '' }}:{{ $secret['StartLine'] ?? '' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-slate-600">Author:</span>
+                                                <span class="text-slate-400 ml-1">{{ $secret['Author'] ?? '' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-slate-600">Commit:</span>
+                                                <span class="font-mono text-slate-400 ml-1">{{ substr($secret['Commit'] ?? '', 0, 8) }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="text-slate-600">Date:</span>
+                                                <span class="text-slate-400 ml-1">{{ $secret['Date'] ?? '' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 p-2 bg-red-950/30 border border-red-900/20 rounded text-xs font-mono text-red-300 overflow-x-auto">
+                                            {{ str_repeat('*', min(strlen($secret['Secret'] ?? ''), 8)) }}{{ substr($secret['Secret'] ?? '', 8) }}
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="flex items-center justify-center h-64 text-emerald-400">
+                                        <div class="text-center">
+                                            <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <p class="text-sm">No secrets detected.</p>
+                                        </div>
+                                    </div>
+                                @endforelse
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center h-64 text-slate-600">
+                                <p>No Gitleaks results available.</p>
+                            </div>
+                        @endif
+                    @endif
+                </div>
+            </div>
+        @endif
+    </main>
+</div>
+
+@script
+<script>
+    $wire.on('scroll-log', () => {
+        const container = document.getElementById('log-container');
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    });
+</script>
+@endscript
