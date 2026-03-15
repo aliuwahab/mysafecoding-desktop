@@ -189,7 +189,7 @@
 
                 {{-- Tabs --}}
                 <div class="flex items-center border-b border-slate-800 bg-slate-900/20">
-                    @foreach (['log' => 'Log', 'summary' => 'Summary', 'trivy' => 'Trivy', 'semgrep' => 'Semgrep', 'gitleaks' => 'Gitleaks', 'laravel_rules' => 'Laravel Rules'] as $tab => $label)
+                    @foreach (['log' => 'Log', 'summary' => 'Summary', 'trivy' => 'Trivy', 'semgrep' => 'Semgrep', 'gitleaks' => 'Gitleaks', 'laravel_rules' => 'Laravel Rules', 'env_audit' => 'Env Audit'] as $tab => $label)
                         <button
                             wire:click="$set('activeTab', '{{ $tab }}')"
                             class="px-4 py-2.5 text-xs font-medium transition-colors border-b-2
@@ -206,6 +206,8 @@
                                 <span class="ml-1 px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">{{ $results['summary']['gitleaks_total'] }}</span>
                             @elseif ($tab === 'laravel_rules' && isset($results['summary']['laravel_rules_total']) && $results['summary']['laravel_rules_total'] > 0)
                                 <span class="ml-1 px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded text-[10px]">{{ $results['summary']['laravel_rules_total'] }}</span>
+                            @elseif ($tab === 'env_audit' && isset($results['summary']['env_audit_total']) && $results['summary']['env_audit_total'] > 0)
+                                <span class="ml-1 px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded text-[10px]">{{ $results['summary']['env_audit_total'] }}</span>
                             @endif
                         </button>
                     @endforeach
@@ -248,10 +250,83 @@
                     @elseif ($activeTab === 'summary')
                         @if ($results && isset($results['summary']))
                             <div class="p-6 space-y-6">
+
+                                {{-- Security Grade --}}
+                                @php $grade = $this->getSecurityGrade(); @endphp
+                                <div class="flex items-center gap-6 {{ $grade['bg'] }} border rounded-xl p-5">
+                                    <div class="text-6xl font-black {{ $grade['color'] }}">{{ $grade['grade'] }}</div>
+                                    <div>
+                                        <h3 class="text-sm font-semibold text-white">Security Grade</h3>
+                                        <p class="text-xs text-slate-400 mt-1">
+                                            @if ($grade['grade'] === 'A')
+                                                Excellent! No security issues found.
+                                            @elseif ($grade['grade'] === 'B')
+                                                Good. Only medium-severity issues detected.
+                                            @elseif ($grade['grade'] === 'C')
+                                                Fair. High-severity issues need attention.
+                                            @elseif ($grade['grade'] === 'D')
+                                                Poor. Multiple high-severity issues found.
+                                            @elseif ($grade['grade'] === 'F')
+                                                Critical. Secrets exposed or critical vulnerabilities detected.
+                                            @else
+                                                Run a scan to get your security grade.
+                                            @endif
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {{-- Scan Comparison --}}
+                                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h3 class="text-sm font-semibold text-white">Compare with Previous Scan</h3>
+                                        @if ($scanDiff)
+                                            <button wire:click="clearComparison" class="text-xs text-slate-500 hover:text-slate-300">Clear</button>
+                                        @endif
+                                    </div>
+                                    @if ($this->comparableScans->isNotEmpty())
+                                        @if (!$scanDiff)
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach ($this->comparableScans as $oldScan)
+                                                    <button
+                                                        wire:click="compareScan({{ $oldScan->id }})"
+                                                        class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs text-slate-400 hover:text-white transition-colors"
+                                                    >
+                                                        {{ $oldScan->created_at->format('M j, H:i') }} ({{ $oldScan->findings_count }} findings)
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="space-y-3">
+                                                <p class="text-xs text-slate-500">{{ $scanDiff['old_date'] }} &rarr; {{ $scanDiff['new_date'] }}</p>
+                                                <div class="grid grid-cols-6 gap-3">
+                                                    @foreach ([
+                                                        'Total' => $scanDiff['total'],
+                                                        'Trivy' => $scanDiff['trivy'],
+                                                        'Semgrep' => $scanDiff['semgrep'],
+                                                        'Gitleaks' => $scanDiff['gitleaks'],
+                                                        'Laravel' => $scanDiff['laravel_rules'],
+                                                        'Env' => $scanDiff['env_audit'],
+                                                    ] as $label => $diff)
+                                                        <div class="text-center">
+                                                            <p class="text-[10px] text-slate-500 uppercase">{{ $label }}</p>
+                                                            <p class="text-lg font-bold mt-0.5
+                                                                {{ $diff < 0 ? 'text-emerald-400' : ($diff > 0 ? 'text-red-400' : 'text-slate-500') }}">
+                                                                {{ $diff > 0 ? '+' : '' }}{{ $diff }}
+                                                            </p>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+                                    @else
+                                        <p class="text-xs text-slate-600">No previous scans of this project to compare with.</p>
+                                    @endif
+                                </div>
+
                                 {{-- Grand Total --}}
                                 <div class="flex flex-wrap gap-3">
                                     @php
-                                        $grandTotal = ($results['summary']['trivy_total'] ?? 0) + ($results['summary']['semgrep_total'] ?? 0) + ($results['summary']['gitleaks_total'] ?? 0) + ($results['summary']['laravel_rules_total'] ?? 0);
+                                        $grandTotal = ($results['summary']['trivy_total'] ?? 0) + ($results['summary']['semgrep_total'] ?? 0) + ($results['summary']['gitleaks_total'] ?? 0) + ($results['summary']['laravel_rules_total'] ?? 0) + ($results['summary']['env_audit_total'] ?? 0);
                                     @endphp
                                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
                                         <p class="text-xs text-slate-500 uppercase tracking-wider">Total Findings</p>
@@ -272,6 +347,10 @@
                                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
                                         <p class="text-xs text-slate-500 uppercase tracking-wider">Laravel Rules</p>
                                         <p class="text-2xl font-bold mt-1 text-rose-400">{{ $results['summary']['laravel_rules_total'] ?? 0 }}</p>
+                                    </div>
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
+                                        <p class="text-xs text-slate-500 uppercase tracking-wider">Env Audit</p>
+                                        <p class="text-2xl font-bold mt-1 text-cyan-400">{{ $results['summary']['env_audit_total'] ?? 0 }}</p>
                                     </div>
                                 </div>
 
@@ -315,6 +394,21 @@
                                                     <span class="w-2.5 h-2.5 rounded-full {{ $color }}"></span>
                                                     <span class="text-xs text-slate-400">{{ $sev }}</span>
                                                     <span class="text-sm font-semibold text-white ml-auto">{{ $results['summary']['laravel_rules'][$sev] ?? 0 }}</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if (isset($results['summary']['env_audit']))
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                                        <h3 class="text-sm font-semibold text-white mb-3">Env Audit Severity Breakdown</h3>
+                                        <div class="grid grid-cols-4 gap-3">
+                                            @foreach (['CRITICAL' => 'bg-red-500', 'HIGH' => 'bg-orange-500', 'MEDIUM' => 'bg-yellow-500', 'INFO' => 'bg-blue-500'] as $sev => $color)
+                                                <div class="flex items-center gap-2">
+                                                    <span class="w-2.5 h-2.5 rounded-full {{ $color }}"></span>
+                                                    <span class="text-xs text-slate-400">{{ $sev }}</span>
+                                                    <span class="text-sm font-semibold text-white ml-auto">{{ $results['summary']['env_audit'][$sev] ?? 0 }}</span>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -494,6 +588,7 @@
                                 <p>No Gitleaks results available.</p>
                             </div>
                         @endif
+
                     {{-- Laravel Rules Tab --}}
                     @elseif ($activeTab === 'laravel_rules')
                         @if ($results && isset($results['laravel_rules']))
@@ -545,6 +640,54 @@
                         @else
                             <div class="flex items-center justify-center h-64 text-slate-600">
                                 <p>No Laravel Rules results available.</p>
+                            </div>
+                        @endif
+
+                    {{-- Env Audit Tab --}}
+                    @elseif ($activeTab === 'env_audit')
+                        @if ($results && isset($results['env_audit']))
+                            <div class="p-4 space-y-2">
+                                @forelse ($results['env_audit']['findings'] ?? [] as $finding)
+                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
+                                                    {{ match($finding['severity'] ?? 'INFO') {
+                                                        'CRITICAL' => 'bg-red-500/20 text-red-400',
+                                                        'HIGH' => 'bg-orange-500/20 text-orange-400',
+                                                        'MEDIUM' => 'bg-yellow-500/20 text-yellow-400',
+                                                        default => 'bg-blue-500/20 text-blue-400'
+                                                    } }}">{{ $finding['severity'] }}</span>
+                                                <span class="text-xs font-mono text-cyan-400">.env:{{ $finding['line'] }}</span>
+                                            </div>
+                                        </div>
+                                        <h4 class="text-sm font-semibold text-white mb-1">{{ $finding['key'] }}: {{ $finding['title'] }}</h4>
+                                        <p class="text-xs text-slate-400 mb-3">{{ $finding['description'] }}</p>
+                                        <div class="grid grid-cols-2 gap-2 text-xs">
+                                            <div class="p-2 bg-red-950/20 border border-red-900/20 rounded">
+                                                <span class="text-slate-500">Current:</span>
+                                                <span class="font-mono text-red-300 ml-1">{{ $finding['current'] }}</span>
+                                            </div>
+                                            <div class="p-2 bg-emerald-950/20 border border-emerald-900/20 rounded">
+                                                <span class="text-slate-500">Recommended:</span>
+                                                <span class="font-mono text-emerald-300 ml-1">{{ $finding['recommended'] }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="flex items-center justify-center h-64 text-emerald-400">
+                                        <div class="text-center">
+                                            <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <p class="text-sm">Environment configuration looks good!</p>
+                                        </div>
+                                    </div>
+                                @endforelse
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center h-64 text-slate-600">
+                                <p>No .env audit results available.</p>
                             </div>
                         @endif
                     @endif

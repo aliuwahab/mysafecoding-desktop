@@ -125,12 +125,26 @@ class ScannerService
                 static::createLog($scanId, 'Laravel Rule Engine: no issues found.', 'laravel_rules');
             }
 
+            // Run .env audit
+            static::createLog($scanId, 'Running .env security audit...', 'system');
+            $envResults = EnvAuditor::audit($scan->project_path);
+            $results['env_audit'] = $envResults;
+            $results['summary']['env_audit'] = $envResults['summary'];
+            $results['summary']['env_audit_total'] = $envResults['summary']['total'];
+
+            if ($envResults['summary']['total'] > 0) {
+                static::createLog($scanId, "Env audit found {$envResults['summary']['total']} issues ({$envResults['summary']['CRITICAL']} critical, {$envResults['summary']['HIGH']} high, {$envResults['summary']['MEDIUM']} medium).", 'system');
+            } else {
+                static::createLog($scanId, 'Env audit: no issues found.', 'system');
+            }
+
             $findingsCount = 0;
             if (isset($results['summary'])) {
                 $findingsCount = ($results['summary']['trivy_total'] ?? 0)
                     + ($results['summary']['semgrep_total'] ?? 0)
                     + ($results['summary']['gitleaks_total'] ?? 0)
-                    + ($results['summary']['laravel_rules_total'] ?? 0);
+                    + ($results['summary']['laravel_rules_total'] ?? 0)
+                    + ($results['summary']['env_audit_total'] ?? 0);
             }
 
             $scan->update([
@@ -139,6 +153,17 @@ class ScannerService
                 'findings_count' => $findingsCount,
                 'completed_at' => now(),
             ]);
+
+            // Send native notification
+            if ($event->code === 0) {
+                try {
+                    \Native\Desktop\Facades\Notification::title('LaraGuard Scan Complete')
+                        ->message($findingsCount > 0 ? "{$findingsCount} security findings detected in ".basename($scan->project_path) : 'No issues found in '.basename($scan->project_path))
+                        ->show();
+                } catch (\Throwable $e) {
+                    // Notification is non-critical, ignore failures
+                }
+            }
 
             static::createLog(
                 $scanId,
