@@ -157,6 +157,7 @@ return [
      */
     'prebuild' => [
         'npm run build',
+        'php artisan native:patch-package-json',
     ],
 
     'postbuild' => [
