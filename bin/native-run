@@ -1,0 +1,7 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+PHP_BIN="$(brew --prefix php@8.4)/bin/php"
+
+exec "$PHP_BIN" artisan native:run --no-queue "$@"
