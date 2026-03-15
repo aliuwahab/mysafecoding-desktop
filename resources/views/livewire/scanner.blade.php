@@ -331,11 +331,18 @@
                                 <div class="flex flex-wrap gap-3">
                                     @php
                                         $grandTotal = ($results['summary']['trivy_total'] ?? 0) + ($results['summary']['semgrep_total'] ?? 0) + ($results['summary']['gitleaks_total'] ?? 0) + ($results['summary']['laravel_rules_total'] ?? 0) + ($results['summary']['env_audit_total'] ?? 0);
+                                        $ignoredStats = $this->ignoredStats;
                                     @endphp
                                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
                                         <p class="text-xs text-slate-500 uppercase tracking-wider">Total Findings</p>
                                         <p class="text-2xl font-bold mt-1 {{ $grandTotal > 0 ? 'text-amber-400' : 'text-emerald-400' }}">{{ $grandTotal }}</p>
                                     </div>
+                                    @if ($ignoredStats['total'] > 0)
+                                        <div class="bg-slate-900 border border-amber-800/30 rounded-xl p-3 flex-1 min-w-0">
+                                            <p class="text-xs text-slate-500 uppercase tracking-wider">Ignored</p>
+                                            <p class="text-2xl font-bold mt-1 text-amber-500/70">{{ $ignoredStats['total'] }}</p>
+                                        </div>
+                                    @endif
                                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
                                         <p class="text-xs text-slate-500 uppercase tracking-wider">Dependencies (Trivy)</p>
                                         <p class="text-2xl font-bold mt-1 text-blue-400">{{ $results['summary']['trivy_total'] ?? 0 }}</p>
@@ -453,12 +460,14 @@
                                                             <th class="pb-2 pr-4">Package</th>
                                                             <th class="pb-2 pr-4">Installed</th>
                                                             <th class="pb-2 pr-4">Fixed</th>
-                                                            <th class="pb-2">Title</th>
+                                                            <th class="pb-2 pr-4">Title</th>
+                                                            <th class="pb-2">Status</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         @foreach ($result['Vulnerabilities'] as $vuln)
-                                                            <tr class="border-b border-slate-800/50 hover:bg-slate-900/50">
+                                                            @php $trivyFp = ($vuln['VulnerabilityID'] ?? '') . ':' . ($vuln['PkgName'] ?? ''); @endphp
+                                                            <tr class="border-b border-slate-800/50 hover:bg-slate-900/50 {{ $this->isIgnored('trivy', $trivyFp) ? 'opacity-40' : '' }}">
                                                                 <td class="py-2 pr-4">
                                                                     <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
                                                                         {{ match($vuln['Severity'] ?? '') {
@@ -473,7 +482,15 @@
                                                                 <td class="py-2 pr-4 text-slate-300">{{ $vuln['PkgName'] ?? '' }}</td>
                                                                 <td class="py-2 pr-4 font-mono text-slate-500">{{ $vuln['InstalledVersion'] ?? '' }}</td>
                                                                 <td class="py-2 pr-4 font-mono text-emerald-400">{{ $vuln['FixedVersion'] ?? 'N/A' }}</td>
-                                                                <td class="py-2 text-slate-400 max-w-xs truncate">{{ $vuln['Title'] ?? $vuln['Description'] ?? '' }}</td>
+                                                                <td class="py-2 pr-4 text-slate-400 max-w-xs truncate">{{ $vuln['Title'] ?? $vuln['Description'] ?? '' }}</td>
+                                                                <td class="py-2">
+                                                                    @if ($this->isIgnored('trivy', $trivyFp))
+                                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 cursor-help" title="{{ $this->getIgnoreReason('trivy', $trivyFp) }}">IGNORED</span>
+                                                                        <button wire:click="unignoreFinding('trivy', '{{ $trivyFp }}')" class="ml-1 text-[10px] text-slate-500 hover:text-red-400 transition-colors">&times;</button>
+                                                                    @else
+                                                                        <button wire:click="promptIgnore('trivy:{{ $trivyFp }}')" class="px-1.5 py-0.5 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                                    @endif
+                                                                </td>
                                                             </tr>
                                                         @endforeach
                                                     </tbody>
@@ -504,7 +521,8 @@
                         @if ($results && isset($results['semgrep']))
                             <div class="p-4 space-y-2">
                                 @forelse ($results['semgrep']['results'] ?? [] as $finding)
-                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                                    @php $semgrepFp = ($finding['check_id'] ?? '') . ':' . ($finding['path'] ?? '') . ':' . ($finding['start']['line'] ?? ''); @endphp
+                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 {{ $this->isIgnored('semgrep', $semgrepFp) ? 'opacity-40' : '' }}">
                                         <div class="flex items-start justify-between mb-2">
                                             <div class="flex items-center gap-2">
                                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
@@ -514,6 +532,16 @@
                                                         default => 'bg-blue-500/20 text-blue-400'
                                                     } }}">{{ $finding['extra']['severity'] ?? 'INFO' }}</span>
                                                 <span class="text-xs font-mono text-slate-400">{{ $finding['check_id'] ?? '' }}</span>
+                                                @if ($this->isIgnored('semgrep', $semgrepFp))
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 cursor-help" title="{{ $this->getIgnoreReason('semgrep', $semgrepFp) }}">IGNORED</span>
+                                                @endif
+                                            </div>
+                                            <div>
+                                                @if ($this->isIgnored('semgrep', $semgrepFp))
+                                                    <button wire:click="unignoreFinding('semgrep', '{{ $semgrepFp }}')" class="px-2 py-1 rounded text-[10px] text-amber-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Remove Ignore</button>
+                                                @else
+                                                    <button wire:click="promptIgnore('semgrep:{{ $semgrepFp }}')" class="px-2 py-1 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                @endif
                                             </div>
                                         </div>
                                         <p class="text-sm text-slate-300 mb-2">{{ $finding['extra']['message'] ?? '' }}</p>
@@ -546,11 +574,22 @@
                         @if ($results && isset($results['gitleaks']))
                             <div class="p-4 space-y-2">
                                 @forelse ($results['gitleaks'] ?? [] as $secret)
-                                    <div class="bg-slate-900 border border-red-900/30 rounded-lg p-4">
+                                    @php $gitleaksFp = ($secret['RuleID'] ?? '') . ':' . ($secret['File'] ?? '') . ':' . ($secret['StartLine'] ?? ''); @endphp
+                                    <div class="bg-slate-900 border border-red-900/30 rounded-lg p-4 {{ $this->isIgnored('gitleaks', $gitleaksFp) ? 'opacity-40' : '' }}">
                                         <div class="flex items-start justify-between mb-2">
                                             <div class="flex items-center gap-2">
                                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-500/20 text-red-400">SECRET</span>
                                                 <span class="text-xs font-mono text-slate-400">{{ $secret['RuleID'] ?? '' }}</span>
+                                                @if ($this->isIgnored('gitleaks', $gitleaksFp))
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 cursor-help" title="{{ $this->getIgnoreReason('gitleaks', $gitleaksFp) }}">IGNORED</span>
+                                                @endif
+                                            </div>
+                                            <div>
+                                                @if ($this->isIgnored('gitleaks', $gitleaksFp))
+                                                    <button wire:click="unignoreFinding('gitleaks', '{{ $gitleaksFp }}')" class="px-2 py-1 rounded text-[10px] text-amber-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Remove Ignore</button>
+                                                @else
+                                                    <button wire:click="promptIgnore('gitleaks:{{ $gitleaksFp }}')" class="px-2 py-1 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                @endif
                                             </div>
                                         </div>
                                         <p class="text-sm text-slate-300 mb-2">{{ $secret['Description'] ?? '' }}</p>
@@ -598,7 +637,8 @@
                         @if ($results && isset($results['laravel_rules']))
                             <div class="p-4 space-y-2">
                                 @forelse ($results['laravel_rules']['findings'] ?? [] as $finding)
-                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                                    @php $laravelFp = ($finding['rule_id'] ?? '') . ':' . ($finding['file_path'] ?? '') . ':' . ($finding['line_start'] ?? ''); @endphp
+                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 {{ $this->isIgnored('laravel_rules', $laravelFp) ? 'opacity-40' : '' }}">
                                         <div class="flex items-start justify-between mb-2">
                                             <div class="flex items-center gap-2">
                                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
@@ -609,6 +649,16 @@
                                                     } }}">{{ $finding['severity'] ?? 'MEDIUM' }}</span>
                                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-500/10 text-rose-400">{{ $finding['category'] ?? '' }}</span>
                                                 <span class="text-xs font-mono text-slate-500">{{ $finding['rule_id'] ?? '' }}</span>
+                                                @if ($this->isIgnored('laravel_rules', $laravelFp))
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 cursor-help" title="{{ $this->getIgnoreReason('laravel_rules', $laravelFp) }}">IGNORED</span>
+                                                @endif
+                                            </div>
+                                            <div>
+                                                @if ($this->isIgnored('laravel_rules', $laravelFp))
+                                                    <button wire:click="unignoreFinding('laravel_rules', '{{ $laravelFp }}')" class="px-2 py-1 rounded text-[10px] text-amber-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Remove Ignore</button>
+                                                @else
+                                                    <button wire:click="promptIgnore('laravel_rules:{{ $laravelFp }}')" class="px-2 py-1 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                @endif
                                             </div>
                                         </div>
                                         <h4 class="text-sm font-semibold text-white mb-1">{{ $finding['title'] ?? '' }}</h4>
@@ -652,7 +702,8 @@
                         @if ($results && isset($results['env_audit']))
                             <div class="p-4 space-y-2">
                                 @forelse ($results['env_audit']['findings'] ?? [] as $finding)
-                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                                    @php $envFp = ($finding['key'] ?? '') . ':' . ($finding['line'] ?? ''); @endphp
+                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 {{ $this->isIgnored('env_audit', $envFp) ? 'opacity-40' : '' }}">
                                         <div class="flex items-start justify-between mb-2">
                                             <div class="flex items-center gap-2">
                                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
@@ -663,6 +714,16 @@
                                                         default => 'bg-blue-500/20 text-blue-400'
                                                     } }}">{{ $finding['severity'] }}</span>
                                                 <span class="text-xs font-mono text-cyan-400">.env:{{ $finding['line'] }}</span>
+                                                @if ($this->isIgnored('env_audit', $envFp))
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 cursor-help" title="{{ $this->getIgnoreReason('env_audit', $envFp) }}">IGNORED</span>
+                                                @endif
+                                            </div>
+                                            <div>
+                                                @if ($this->isIgnored('env_audit', $envFp))
+                                                    <button wire:click="unignoreFinding('env_audit', '{{ $envFp }}')" class="px-2 py-1 rounded text-[10px] text-amber-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Remove Ignore</button>
+                                                @else
+                                                    <button wire:click="promptIgnore('env_audit:{{ $envFp }}')" class="px-2 py-1 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                @endif
                                             </div>
                                         </div>
                                         <h4 class="text-sm font-semibold text-white mb-1">{{ $finding['key'] }}: {{ $finding['title'] }}</h4>
@@ -699,6 +760,31 @@
             </div>
         @endif
     </main>
+
+    {{-- Ignore Reason Modal --}}
+    @if ($pendingIgnoreKey)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-6 w-96 shadow-2xl">
+                <h3 class="text-sm font-semibold text-white mb-3">Ignore this finding?</h3>
+                <p class="text-xs text-slate-400 mb-4">This finding will still appear in future scans but will be labeled as ignored.</p>
+                <div class="mb-4">
+                    <label class="text-xs text-slate-500 mb-1 block">Reason (optional)</label>
+                    <input
+                        type="text"
+                        wire:model="ignoreReason"
+                        wire:keydown.enter="confirmIgnore"
+                        placeholder="e.g. Test fixture, false positive, accepted risk..."
+                        class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
+                        autofocus
+                    />
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button wire:click="cancelIgnore" class="px-4 py-2 text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors">Cancel</button>
+                    <button wire:click="confirmIgnore" class="px-4 py-2 text-xs text-white bg-amber-600 hover:bg-amber-500 rounded-lg transition-colors">Ignore Finding</button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 @script

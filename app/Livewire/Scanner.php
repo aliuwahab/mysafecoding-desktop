@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\IgnoredFinding;
 use App\Models\Scan;
 use App\Models\ScanLog;
 use App\Services\ScannerService;
@@ -42,6 +43,12 @@ class Scanner extends Component
 
     public ?array $scanDiff = null;
 
+    public array $ignoredFindings = [];
+
+    public string $ignoreReason = '';
+
+    public ?string $pendingIgnoreKey = null;
+
     public function mount(): void
     {
         $this->exclusions = self::DEFAULT_EXCLUSIONS;
@@ -56,6 +63,87 @@ class Scanner extends Component
         if ($lastScan) {
             $this->loadScan($lastScan->id);
         }
+    }
+
+    public function loadIgnoredFindings(): void
+    {
+        if ($this->projectPath && Schema::hasTable('ignored_findings')) {
+            $this->ignoredFindings = IgnoredFinding::getIgnoredMap($this->projectPath);
+        } else {
+            $this->ignoredFindings = [];
+        }
+    }
+
+    public function isIgnored(string $scanner, string $fingerprint): bool
+    {
+        return isset($this->ignoredFindings["{$scanner}:{$fingerprint}"]);
+    }
+
+    public function getIgnoreReason(string $scanner, string $fingerprint): string
+    {
+        return $this->ignoredFindings["{$scanner}:{$fingerprint}"] ?? '';
+    }
+
+    public function promptIgnore(string $key): void
+    {
+        $this->pendingIgnoreKey = $key;
+        $this->ignoreReason = '';
+    }
+
+    public function cancelIgnore(): void
+    {
+        $this->pendingIgnoreKey = null;
+        $this->ignoreReason = '';
+    }
+
+    public function confirmIgnore(): void
+    {
+        if (! $this->pendingIgnoreKey || ! $this->projectPath) {
+            return;
+        }
+
+        [$scanner, $fingerprint] = explode(':', $this->pendingIgnoreKey, 2);
+
+        IgnoredFinding::updateOrCreate(
+            [
+                'project_path' => $this->projectPath,
+                'scanner' => $scanner,
+                'fingerprint' => $fingerprint,
+            ],
+            ['reason' => $this->ignoreReason ?: null]
+        );
+
+        $this->loadIgnoredFindings();
+        $this->pendingIgnoreKey = null;
+        $this->ignoreReason = '';
+    }
+
+    public function unignoreFinding(string $scanner, string $fingerprint): void
+    {
+        if (! $this->projectPath) {
+            return;
+        }
+
+        IgnoredFinding::where('project_path', $this->projectPath)
+            ->where('scanner', $scanner)
+            ->where('fingerprint', $fingerprint)
+            ->delete();
+
+        $this->loadIgnoredFindings();
+    }
+
+    public function getIgnoredStatsProperty(): array
+    {
+        $stats = ['total' => 0, 'trivy' => 0, 'semgrep' => 0, 'gitleaks' => 0, 'laravel_rules' => 0, 'env_audit' => 0];
+        foreach ($this->ignoredFindings as $key => $reason) {
+            $scanner = explode(':', $key, 2)[0];
+            if (isset($stats[$scanner])) {
+                $stats[$scanner]++;
+            }
+            $stats['total']++;
+        }
+
+        return $stats;
     }
 
     public function newScan(): void
@@ -155,6 +243,7 @@ class Scanner extends Component
 
             if ($scan->status === 'completed') {
                 $this->activeTab = 'summary';
+                $this->loadIgnoredFindings();
             }
         }
     }
@@ -198,6 +287,7 @@ class Scanner extends Component
 
         $this->lastLogId = $logs->last()?->id ?? 0;
         $this->activeTab = $scan->status === 'completed' ? 'summary' : 'log';
+        $this->loadIgnoredFindings();
     }
 
     public function exportJson(): void
