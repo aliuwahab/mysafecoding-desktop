@@ -8,6 +8,7 @@ use App\Services\ScannerService;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 use Native\Desktop\Dialog;
+use Native\Desktop\Facades\Shell;
 
 class Scanner extends Component
 {
@@ -205,6 +206,11 @@ class Scanner extends Component
         if ($path) {
             file_put_contents($path, json_encode($this->results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         }
+    }
+
+    public function openComprehensiveScan(): void
+    {
+        Shell::openExternal('https://laravelguard.com/');
     }
 
     public function installTools(): void
