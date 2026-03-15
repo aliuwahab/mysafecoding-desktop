@@ -19,6 +19,10 @@
             <button wire:click="newScan" class="w-full px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors">
                 + New Scan
             </button>
+            <a href="http://larashield.test/" target="_blank" class="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-medium rounded-lg transition-all shadow-lg shadow-violet-500/20">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                Comprehensive Scan
+            </a>
         </div>
 
         {{-- Scan History --}}
@@ -185,7 +189,7 @@
 
                 {{-- Tabs --}}
                 <div class="flex items-center border-b border-slate-800 bg-slate-900/20">
-                    @foreach (['log' => 'Log', 'summary' => 'Summary', 'trivy' => 'Trivy', 'semgrep' => 'Semgrep', 'gitleaks' => 'Gitleaks'] as $tab => $label)
+                    @foreach (['log' => 'Log', 'summary' => 'Summary', 'trivy' => 'Trivy', 'semgrep' => 'Semgrep', 'gitleaks' => 'Gitleaks', 'laravel_rules' => 'Laravel Rules'] as $tab => $label)
                         <button
                             wire:click="$set('activeTab', '{{ $tab }}')"
                             class="px-4 py-2.5 text-xs font-medium transition-colors border-b-2
@@ -200,6 +204,8 @@
                                 <span class="ml-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">{{ $results['summary']['semgrep_total'] }}</span>
                             @elseif ($tab === 'gitleaks' && isset($results['summary']['gitleaks_total']) && $results['summary']['gitleaks_total'] > 0)
                                 <span class="ml-1 px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">{{ $results['summary']['gitleaks_total'] }}</span>
+                            @elseif ($tab === 'laravel_rules' && isset($results['summary']['laravel_rules_total']) && $results['summary']['laravel_rules_total'] > 0)
+                                <span class="ml-1 px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded text-[10px]">{{ $results['summary']['laravel_rules_total'] }}</span>
                             @endif
                         </button>
                     @endforeach
@@ -226,6 +232,7 @@
                                             'trivy' => 'bg-blue-500/10 text-blue-400',
                                             'semgrep' => 'bg-purple-500/10 text-purple-400',
                                             'gitleaks' => 'bg-amber-500/10 text-amber-400',
+                                            'laravel_rules' => 'bg-rose-500/10 text-rose-400',
                                             default => 'bg-slate-500/10 text-slate-500'
                                         } }}">{{ $log['scanner'] }}</span>
                                     <span class="{{ $log['level'] === 'error' ? 'text-red-400' : 'text-slate-300' }} break-all">{{ $log['line'] }}</span>
@@ -242,25 +249,29 @@
                         @if ($results && isset($results['summary']))
                             <div class="p-6 space-y-6">
                                 {{-- Grand Total --}}
-                                <div class="grid grid-cols-4 gap-4">
+                                <div class="flex flex-wrap gap-3">
                                     @php
-                                        $grandTotal = ($results['summary']['trivy_total'] ?? 0) + ($results['summary']['semgrep_total'] ?? 0) + ($results['summary']['gitleaks_total'] ?? 0);
+                                        $grandTotal = ($results['summary']['trivy_total'] ?? 0) + ($results['summary']['semgrep_total'] ?? 0) + ($results['summary']['gitleaks_total'] ?? 0) + ($results['summary']['laravel_rules_total'] ?? 0);
                                     @endphp
-                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
                                         <p class="text-xs text-slate-500 uppercase tracking-wider">Total Findings</p>
-                                        <p class="text-3xl font-bold mt-1 {{ $grandTotal > 0 ? 'text-amber-400' : 'text-emerald-400' }}">{{ $grandTotal }}</p>
+                                        <p class="text-2xl font-bold mt-1 {{ $grandTotal > 0 ? 'text-amber-400' : 'text-emerald-400' }}">{{ $grandTotal }}</p>
                                     </div>
-                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
                                         <p class="text-xs text-slate-500 uppercase tracking-wider">Dependencies (Trivy)</p>
-                                        <p class="text-3xl font-bold mt-1 text-blue-400">{{ $results['summary']['trivy_total'] ?? 0 }}</p>
+                                        <p class="text-2xl font-bold mt-1 text-blue-400">{{ $results['summary']['trivy_total'] ?? 0 }}</p>
                                     </div>
-                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
                                         <p class="text-xs text-slate-500 uppercase tracking-wider">Code (Semgrep)</p>
-                                        <p class="text-3xl font-bold mt-1 text-purple-400">{{ $results['summary']['semgrep_total'] ?? 0 }}</p>
+                                        <p class="text-2xl font-bold mt-1 text-purple-400">{{ $results['summary']['semgrep_total'] ?? 0 }}</p>
                                     </div>
-                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
                                         <p class="text-xs text-slate-500 uppercase tracking-wider">Secrets (Gitleaks)</p>
-                                        <p class="text-3xl font-bold mt-1 text-red-400">{{ $results['summary']['gitleaks_total'] ?? 0 }}</p>
+                                        <p class="text-2xl font-bold mt-1 text-red-400">{{ $results['summary']['gitleaks_total'] ?? 0 }}</p>
+                                    </div>
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex-1 min-w-0">
+                                        <p class="text-xs text-slate-500 uppercase tracking-wider">Laravel Rules</p>
+                                        <p class="text-2xl font-bold mt-1 text-rose-400">{{ $results['summary']['laravel_rules_total'] ?? 0 }}</p>
                                     </div>
                                 </div>
 
@@ -289,6 +300,21 @@
                                                     <span class="w-2.5 h-2.5 rounded-full {{ $color }}"></span>
                                                     <span class="text-xs text-slate-400">{{ $sev }}</span>
                                                     <span class="text-sm font-semibold text-white ml-auto">{{ $results['summary']['semgrep'][$sev] ?? 0 }}</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if (isset($results['summary']['laravel_rules']))
+                                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                                        <h3 class="text-sm font-semibold text-white mb-3">Laravel Rules Severity Breakdown</h3>
+                                        <div class="grid grid-cols-3 gap-3">
+                                            @foreach (['CRITICAL' => 'bg-red-500', 'HIGH' => 'bg-orange-500', 'MEDIUM' => 'bg-yellow-500'] as $sev => $color)
+                                                <div class="flex items-center gap-2">
+                                                    <span class="w-2.5 h-2.5 rounded-full {{ $color }}"></span>
+                                                    <span class="text-xs text-slate-400">{{ $sev }}</span>
+                                                    <span class="text-sm font-semibold text-white ml-auto">{{ $results['summary']['laravel_rules'][$sev] ?? 0 }}</span>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -466,6 +492,59 @@
                         @else
                             <div class="flex items-center justify-center h-64 text-slate-600">
                                 <p>No Gitleaks results available.</p>
+                            </div>
+                        @endif
+                    {{-- Laravel Rules Tab --}}
+                    @elseif ($activeTab === 'laravel_rules')
+                        @if ($results && isset($results['laravel_rules']))
+                            <div class="p-4 space-y-2">
+                                @forelse ($results['laravel_rules']['findings'] ?? [] as $finding)
+                                    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                                        <div class="flex items-start justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
+                                                    {{ match($finding['severity'] ?? 'MEDIUM') {
+                                                        'CRITICAL' => 'bg-red-500/20 text-red-400',
+                                                        'HIGH' => 'bg-orange-500/20 text-orange-400',
+                                                        default => 'bg-yellow-500/20 text-yellow-400'
+                                                    } }}">{{ $finding['severity'] ?? 'MEDIUM' }}</span>
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-500/10 text-rose-400">{{ $finding['category'] ?? '' }}</span>
+                                                <span class="text-xs font-mono text-slate-500">{{ $finding['rule_id'] ?? '' }}</span>
+                                            </div>
+                                        </div>
+                                        <h4 class="text-sm font-semibold text-white mb-1">{{ $finding['title'] ?? '' }}</h4>
+                                        <p class="text-xs text-slate-400 mb-3">{{ $finding['description'] ?? '' }}</p>
+                                        <div class="grid grid-cols-1 gap-2 text-xs">
+                                            <div>
+                                                <span class="text-slate-600">File:</span>
+                                                <span class="font-mono text-slate-400 ml-1">{{ $finding['file_path'] ?? '' }}:{{ $finding['line_start'] ?? '' }}</span>
+                                            </div>
+                                        </div>
+                                        @if (!empty($finding['code_snippet']))
+                                            <div class="mt-2 p-2 bg-slate-950 border border-slate-800 rounded text-xs font-mono text-slate-300 overflow-x-auto">
+                                                <pre class="whitespace-pre-wrap">{{ $finding['code_snippet'] }}</pre>
+                                            </div>
+                                        @endif
+                                        @if (!empty($finding['fix_guidance']))
+                                            <div class="mt-2 p-2 bg-emerald-950/30 border border-emerald-900/20 rounded text-xs text-emerald-300">
+                                                <span class="font-semibold">Fix:</span> {{ $finding['fix_guidance'] }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                @empty
+                                    <div class="flex items-center justify-center h-64 text-emerald-400">
+                                        <div class="text-center">
+                                            <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <p class="text-sm">No Laravel-specific issues found.</p>
+                                        </div>
+                                    </div>
+                                @endforelse
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center h-64 text-slate-600">
+                                <p>No Laravel Rules results available.</p>
                             </div>
                         @endif
                     @endif

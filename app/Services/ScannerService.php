@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Scan;
 use App\Models\ScanLog;
+use App\Services\Scanners\LaravelRuleEngine;
 use Illuminate\Support\Facades\Event;
 use Native\Desktop\Events\ChildProcess\ErrorReceived;
 use Native\Desktop\Events\ChildProcess\MessageReceived;
@@ -110,11 +111,26 @@ class ScannerService
 
             $results = static::parseResults($scan);
 
+            // Run Laravel-specific rule engine
+            static::createLog($scanId, 'Running Laravel-specific rule analysis...', 'laravel_rules');
+            $engine = new LaravelRuleEngine;
+            $laravelResults = $engine->analyze($scan->project_path);
+            $results['laravel_rules'] = $laravelResults;
+            $results['summary']['laravel_rules'] = $laravelResults['summary'];
+            $results['summary']['laravel_rules_total'] = $laravelResults['summary']['total'];
+
+            if ($laravelResults['summary']['total'] > 0) {
+                static::createLog($scanId, "Laravel Rule Engine found {$laravelResults['summary']['total']} issues ({$laravelResults['summary']['CRITICAL']} critical, {$laravelResults['summary']['HIGH']} high, {$laravelResults['summary']['MEDIUM']} medium).", 'laravel_rules');
+            } else {
+                static::createLog($scanId, 'Laravel Rule Engine: no issues found.', 'laravel_rules');
+            }
+
             $findingsCount = 0;
             if (isset($results['summary'])) {
                 $findingsCount = ($results['summary']['trivy_total'] ?? 0)
                     + ($results['summary']['semgrep_total'] ?? 0)
-                    + ($results['summary']['gitleaks_total'] ?? 0);
+                    + ($results['summary']['gitleaks_total'] ?? 0)
+                    + ($results['summary']['laravel_rules_total'] ?? 0);
             }
 
             $scan->update([
@@ -206,6 +222,9 @@ class ScannerService
         }
         if (str_contains($lower, 'gitleaks') || str_contains($lower, 'secret')) {
             return 'gitleaks';
+        }
+        if (str_contains($lower, 'laravel rule') || str_contains($lower, 'laravel-specific')) {
+            return 'laravel_rules';
         }
 
         return 'system';
