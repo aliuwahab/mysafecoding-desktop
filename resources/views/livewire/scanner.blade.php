@@ -251,31 +251,12 @@
                         @if ($results && isset($results['summary']))
                             <div class="p-6 space-y-6">
 
-                                {{-- Security Grade --}}
+                                {{-- Security Grade + Scan Comparison Row --}}
                                 @php $grade = $this->getSecurityGrade(); @endphp
-                                <div class="flex items-center gap-6 {{ $grade['bg'] }} border rounded-xl p-5">
-                                    <div class="text-6xl font-black {{ $grade['color'] }}">{{ $grade['grade'] }}</div>
-                                    <div>
-                                        <h3 class="text-sm font-semibold text-white">Security Grade</h3>
-                                        <p class="text-xs text-slate-400 mt-1">
-                                            @if ($grade['grade'] === 'A')
-                                                Excellent! No security issues found.
-                                            @elseif ($grade['grade'] === 'B')
-                                                Good. Only medium-severity issues detected.
-                                            @elseif ($grade['grade'] === 'C')
-                                                Fair. High-severity issues need attention.
-                                            @elseif ($grade['grade'] === 'D')
-                                                Poor. Multiple high-severity issues found.
-                                            @elseif ($grade['grade'] === 'F')
-                                                Critical. Secrets exposed or critical vulnerabilities detected.
-                                            @else
-                                                Run a scan to get your security grade.
-                                            @endif
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {{-- Scan Comparison --}}
+                                <div class="flex items-start gap-6">
+                                    {{-- Left: Scan Comparison --}}
+                                    <div class="flex-1 min-w-0">
+                                        {{-- Scan Comparison --}}
                                 <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
                                     <div class="flex items-center justify-between mb-3">
                                         <h3 class="text-sm font-semibold text-white">Compare with Previous Scan</h3>
@@ -321,6 +302,29 @@
                                     @else
                                         <p class="text-xs text-slate-600">No previous scans of this project to compare with.</p>
                                     @endif
+                                </div>
+                                    </div>
+
+                                    {{-- Right: Security Grade Circle --}}
+                                    <div class="shrink-0 flex flex-col items-center gap-2">
+                                        <div class="w-24 h-24 rounded-full {{ $grade['bg'] }} border-2 flex items-center justify-center">
+                                            <span class="text-4xl font-black {{ $grade['color'] }}">{{ $grade['grade'] }}</span>
+                                        </div>
+                                        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Security Grade</p>
+                                        <p class="text-[10px] text-slate-500 text-center max-w-[100px]">
+                                            @if ($grade['grade'] === 'A')
+                                                Excellent
+                                            @elseif ($grade['grade'] === 'B')
+                                                Good
+                                            @elseif ($grade['grade'] === 'C')
+                                                Fair
+                                            @elseif ($grade['grade'] === 'D')
+                                                Poor
+                                            @elseif ($grade['grade'] === 'F')
+                                                Critical
+                                            @endif
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {{-- Grand Total --}}
