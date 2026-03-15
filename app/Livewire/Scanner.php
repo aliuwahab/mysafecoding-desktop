@@ -38,6 +38,10 @@ class Scanner extends Component
 
     public bool $showSetup = false;
 
+    public ?int $compareWithScanId = null;
+
+    public ?array $scanDiff = null;
+
     public function mount(): void
     {
         $this->exclusions = self::DEFAULT_EXCLUSIONS;
@@ -63,6 +67,8 @@ class Scanner extends Component
         $this->results = null;
         $this->status = 'idle';
         $this->lastLogId = 0;
+        $this->compareWithScanId = null;
+        $this->scanDiff = null;
     }
 
     public function selectFolder(): void
@@ -169,6 +175,8 @@ class Scanner extends Component
         $this->exclusions = $scan->exclusions ?? [];
         $this->status = $scan->status;
         $this->results = $scan->results;
+        $this->compareWithScanId = null;
+        $this->scanDiff = null;
 
         if ($scan->status === 'running') {
             $this->activeScanId = $scanId;
@@ -211,6 +219,82 @@ class Scanner extends Component
     public function openComprehensiveScan(): void
     {
         Shell::openExternal('https://laravelguard.com/');
+    }
+
+    public function getSecurityGrade(): array
+    {
+        if (! $this->results || ! isset($this->results['summary'])) {
+            return ['grade' => '-', 'color' => 'text-slate-500', 'bg' => 'bg-slate-500/10 border-slate-500/20'];
+        }
+
+        $summary = $this->results['summary'];
+        $criticals = ($summary['trivy']['CRITICAL'] ?? 0) + ($summary['laravel_rules']['CRITICAL'] ?? 0) + ($summary['env_audit']['CRITICAL'] ?? 0);
+        $highs = ($summary['trivy']['HIGH'] ?? 0) + ($summary['semgrep']['ERROR'] ?? 0) + ($summary['laravel_rules']['HIGH'] ?? 0) + ($summary['env_audit']['HIGH'] ?? 0);
+        $mediums = ($summary['trivy']['MEDIUM'] ?? 0) + ($summary['semgrep']['WARNING'] ?? 0) + ($summary['laravel_rules']['MEDIUM'] ?? 0) + ($summary['env_audit']['MEDIUM'] ?? 0);
+        $secrets = $summary['gitleaks_total'] ?? 0;
+
+        if ($secrets > 0 || $criticals > 0) {
+            return ['grade' => 'F', 'color' => 'text-red-400', 'bg' => 'bg-red-500/10 border-red-500/20'];
+        }
+        if ($highs > 3) {
+            return ['grade' => 'D', 'color' => 'text-orange-400', 'bg' => 'bg-orange-500/10 border-orange-500/20'];
+        }
+        if ($highs > 0) {
+            return ['grade' => 'C', 'color' => 'text-yellow-400', 'bg' => 'bg-yellow-500/10 border-yellow-500/20'];
+        }
+        if ($mediums > 0) {
+            return ['grade' => 'B', 'color' => 'text-blue-400', 'bg' => 'bg-blue-500/10 border-blue-500/20'];
+        }
+
+        return ['grade' => 'A', 'color' => 'text-emerald-400', 'bg' => 'bg-emerald-500/10 border-emerald-500/20'];
+    }
+
+    public function compareScan(int $scanId): void
+    {
+        if (! $this->results || ! $this->selectedHistoryId) {
+            return;
+        }
+
+        $oldScan = Scan::find($scanId);
+        if (! $oldScan || ! $oldScan->results) {
+            return;
+        }
+
+        $oldSummary = $oldScan->results['summary'] ?? [];
+        $newSummary = $this->results['summary'] ?? [];
+
+        $this->compareWithScanId = $scanId;
+        $this->scanDiff = [
+            'old_date' => $oldScan->created_at->format('M j, H:i'),
+            'new_date' => Scan::find($this->selectedHistoryId)?->created_at->format('M j, H:i') ?? 'Current',
+            'trivy' => ($newSummary['trivy_total'] ?? 0) - ($oldSummary['trivy_total'] ?? 0),
+            'semgrep' => ($newSummary['semgrep_total'] ?? 0) - ($oldSummary['semgrep_total'] ?? 0),
+            'gitleaks' => ($newSummary['gitleaks_total'] ?? 0) - ($oldSummary['gitleaks_total'] ?? 0),
+            'laravel_rules' => ($newSummary['laravel_rules_total'] ?? 0) - ($oldSummary['laravel_rules_total'] ?? 0),
+            'env_audit' => ($newSummary['env_audit_total'] ?? 0) - ($oldSummary['env_audit_total'] ?? 0),
+            'total' => (($newSummary['trivy_total'] ?? 0) + ($newSummary['semgrep_total'] ?? 0) + ($newSummary['gitleaks_total'] ?? 0) + ($newSummary['laravel_rules_total'] ?? 0) + ($newSummary['env_audit_total'] ?? 0))
+                - (($oldSummary['trivy_total'] ?? 0) + ($oldSummary['semgrep_total'] ?? 0) + ($oldSummary['gitleaks_total'] ?? 0) + ($oldSummary['laravel_rules_total'] ?? 0) + ($oldSummary['env_audit_total'] ?? 0)),
+        ];
+    }
+
+    public function clearComparison(): void
+    {
+        $this->compareWithScanId = null;
+        $this->scanDiff = null;
+    }
+
+    public function getComparableScansProperty()
+    {
+        if (! $this->projectPath || ! $this->selectedHistoryId || ! Schema::hasTable('scans')) {
+            return collect();
+        }
+
+        return Scan::where('project_path', $this->projectPath)
+            ->where('status', 'completed')
+            ->where('id', '!=', $this->selectedHistoryId)
+            ->latestFirst()
+            ->take(10)
+            ->get();
     }
 
     public function installTools(): void
