@@ -29,7 +29,7 @@ return [
     /**
      * The author of your application.
      */
-    'author' => env('NATIVEPHP_APP_AUTHOR'),
+    'author' => env('NATIVEPHP_APP_AUTHOR', 'Ali Uwahab'),
 
     /**
      * The copyright notice for your application.
@@ -44,7 +44,7 @@ return [
     /**
      * The Website of your application.
      */
-    'website' => env('NATIVEPHP_APP_WEBSITE', 'https://nativephp.com'),
+    'website' => env('NATIVEPHP_APP_WEBSITE', 'https://laravelguard.com'),
 
     /**
      * The default service provider for your application. This provider
@@ -104,7 +104,7 @@ return [
          * Supported: "github", "s3", "spaces"
          * Note: The "s3" provider is compatible with S3-compatible services like Cloudflare R2.
          */
-        'default' => env('NATIVEPHP_UPDATER_PROVIDER', 'spaces'),
+        'default' => env('NATIVEPHP_UPDATER_PROVIDER', 'github'),
 
         'providers' => [
             'github' => [
