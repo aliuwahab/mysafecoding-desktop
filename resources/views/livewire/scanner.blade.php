@@ -488,7 +488,7 @@
                                                                         <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-400 cursor-help" title="{{ $this->getIgnoreReason('trivy', $trivyFp) }}">IGNORED</span>
                                                                         <button wire:click="unignoreFinding('trivy', '{{ $trivyFp }}')" class="ml-1 text-[10px] text-slate-500 hover:text-red-400 transition-colors">&times;</button>
                                                                     @else
-                                                                        <button wire:click="promptIgnore('trivy:{{ $trivyFp }}')" class="px-1.5 py-0.5 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                                        <button wire:click="promptIgnore('trivy:{{ $trivyFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-red-400/70 border border-red-500/20 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Ignore</button>
                                                                     @endif
                                                                 </td>
                                                             </tr>
@@ -538,9 +538,9 @@
                                             </div>
                                             <div>
                                                 @if ($this->isIgnored('semgrep', $semgrepFp))
-                                                    <button wire:click="unignoreFinding('semgrep', '{{ $semgrepFp }}')" class="px-2 py-1 rounded text-[10px] text-amber-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Remove Ignore</button>
+                                                    <button wire:click="unignoreFinding('semgrep', '{{ $semgrepFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-amber-400 border border-amber-500/20 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Remove Ignore</button>
                                                 @else
-                                                    <button wire:click="promptIgnore('semgrep:{{ $semgrepFp }}')" class="px-2 py-1 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                    <button wire:click="promptIgnore('semgrep:{{ $semgrepFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-red-400/70 border border-red-500/20 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Ignore</button>
                                                 @endif
                                             </div>
                                         </div>
@@ -586,9 +586,9 @@
                                             </div>
                                             <div>
                                                 @if ($this->isIgnored('gitleaks', $gitleaksFp))
-                                                    <button wire:click="unignoreFinding('gitleaks', '{{ $gitleaksFp }}')" class="px-2 py-1 rounded text-[10px] text-amber-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Remove Ignore</button>
+                                                    <button wire:click="unignoreFinding('gitleaks', '{{ $gitleaksFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-amber-400 border border-amber-500/20 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Remove Ignore</button>
                                                 @else
-                                                    <button wire:click="promptIgnore('gitleaks:{{ $gitleaksFp }}')" class="px-2 py-1 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                    <button wire:click="promptIgnore('gitleaks:{{ $gitleaksFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-red-400/70 border border-red-500/20 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Ignore</button>
                                                 @endif
                                             </div>
                                         </div>
@@ -655,9 +655,9 @@
                                             </div>
                                             <div>
                                                 @if ($this->isIgnored('laravel_rules', $laravelFp))
-                                                    <button wire:click="unignoreFinding('laravel_rules', '{{ $laravelFp }}')" class="px-2 py-1 rounded text-[10px] text-amber-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Remove Ignore</button>
+                                                    <button wire:click="unignoreFinding('laravel_rules', '{{ $laravelFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-amber-400 border border-amber-500/20 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Remove Ignore</button>
                                                 @else
-                                                    <button wire:click="promptIgnore('laravel_rules:{{ $laravelFp }}')" class="px-2 py-1 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                    <button wire:click="promptIgnore('laravel_rules:{{ $laravelFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-red-400/70 border border-red-500/20 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Ignore</button>
                                                 @endif
                                             </div>
                                         </div>
@@ -720,9 +720,9 @@
                                             </div>
                                             <div>
                                                 @if ($this->isIgnored('env_audit', $envFp))
-                                                    <button wire:click="unignoreFinding('env_audit', '{{ $envFp }}')" class="px-2 py-1 rounded text-[10px] text-amber-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Remove Ignore</button>
+                                                    <button wire:click="unignoreFinding('env_audit', '{{ $envFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-amber-400 border border-amber-500/20 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Remove Ignore</button>
                                                 @else
-                                                    <button wire:click="promptIgnore('env_audit:{{ $envFp }}')" class="px-2 py-1 rounded text-[10px] text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 transition-colors">Ignore</button>
+                                                    <button wire:click="promptIgnore('env_audit:{{ $envFp }}')" class="px-2 py-1 rounded text-[10px] font-medium cursor-pointer text-red-400/70 border border-red-500/20 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/40 transition-colors">Ignore</button>
                                                 @endif
                                             </div>
                                         </div>
