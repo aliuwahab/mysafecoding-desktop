@@ -142,6 +142,12 @@
                             <span class="text-slate-300">{{ $projectPath ? basename($projectPath) : 'Select Folder' }}</span>
                         </button>
 
+                        @if (isset($results['project_type']) && $results['project_type'] !== 'unknown')
+                            <span class="px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded text-xs text-indigo-400 font-medium uppercase">
+                                {{ $results['project_type'] }}
+                            </span>
+                        @endif
+
                         {{-- Exclusions --}}
                         <div class="flex-1 flex items-center gap-2 flex-wrap">
                             @foreach ($exclusions as $index => $exc)
@@ -189,7 +195,16 @@
 
                 {{-- Tabs --}}
                 <div class="flex items-center border-b border-slate-800 bg-slate-900/20">
-                    @foreach (['log' => 'Log', 'summary' => 'Summary', 'trivy' => 'Trivy', 'semgrep' => 'Semgrep', 'gitleaks' => 'Gitleaks', 'laravel_rules' => 'Laravel Rules', 'env_audit' => 'Env Audit'] as $tab => $label)
+                    @php
+                        $tabs = ['log' => 'Log', 'summary' => 'Summary', 'trivy' => 'Dependencies', 'semgrep' => 'Code Analysis', 'gitleaks' => 'Secrets'];
+                        if (isset($results['laravel_rules'])) {
+                            $tabs['laravel_rules'] = 'Laravel Rules';
+                        }
+                        if (isset($results['env_audit'])) {
+                            $tabs['env_audit'] = 'Env Audit';
+                        }
+                    @endphp
+                    @foreach ($tabs as $tab => $label)
                         <button
                             wire:click="$set('activeTab', '{{ $tab }}')"
                             class="px-4 py-2.5 text-xs font-medium transition-colors border-b-2

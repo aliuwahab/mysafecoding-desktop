@@ -128,22 +128,52 @@ if [ ! -d "$PROJECT_PATH" ]; then
     fail "Directory not found: $PROJECT_PATH"
 fi
 
-if [ ! -f "$PROJECT_PATH/artisan" ]; then
-    if [ "$NON_INTERACTIVE" = "1" ]; then
-        fail "No 'artisan' file found in $PROJECT_PATH."
+# ── Detect project type ───────────────────────────────────────────────────
+PROJECT_TYPE="unknown"
+if [ -f "$PROJECT_PATH/artisan" ] && [ -f "$PROJECT_PATH/composer.json" ]; then
+    PROJECT_TYPE="laravel"
+elif [ -f "$PROJECT_PATH/composer.json" ]; then
+    PROJECT_TYPE="php"
+elif [ -f "$PROJECT_PATH/package.json" ]; then
+    if grep -q '"next"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+        PROJECT_TYPE="nextjs"
+    elif grep -q '"nuxt"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+        PROJECT_TYPE="nuxt"
+    elif grep -q '"react"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+        PROJECT_TYPE="react"
+    elif grep -q '"vue"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+        PROJECT_TYPE="vue"
+    elif grep -q '"svelte"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+        PROJECT_TYPE="svelte"
+    elif grep -q '"angular"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+        PROJECT_TYPE="angular"
+    else
+        PROJECT_TYPE="node"
     fi
-
-    warn "No 'artisan' file found — are you sure this is a Laravel project?"
-    echo -n "  Continue anyway? (y/N): "
-    read -r confirm
-    [[ "$confirm" =~ ^[Yy]$ ]] || fail "Aborted."
+elif [ -f "$PROJECT_PATH/requirements.txt" ] || [ -f "$PROJECT_PATH/pyproject.toml" ] || [ -f "$PROJECT_PATH/setup.py" ]; then
+    PROJECT_TYPE="python"
+elif [ -f "$PROJECT_PATH/Gemfile" ]; then
+    PROJECT_TYPE="ruby"
+elif [ -f "$PROJECT_PATH/go.mod" ]; then
+    PROJECT_TYPE="go"
+elif [ -f "$PROJECT_PATH/Cargo.toml" ]; then
+    PROJECT_TYPE="rust"
+elif [ -f "$PROJECT_PATH/mix.exs" ]; then
+    PROJECT_TYPE="elixir"
+elif [ -f "$PROJECT_PATH/build.gradle" ] || [ -f "$PROJECT_PATH/pom.xml" ]; then
+    PROJECT_TYPE="java"
 fi
+
+info "Detected project type: $PROJECT_TYPE"
 
 # ── Setup output directory ─────────────────────────────────────────────────
 if [ -z "$OUTPUT_DIR" ]; then
     OUTPUT_DIR="./ls-output/$(date +%Y%m%d_%H%M%S)"
 fi
 mkdir -p "$OUTPUT_DIR"
+
+# Write project type for the desktop app to read
+echo "$PROJECT_TYPE" > "$OUTPUT_DIR/project-type.txt"
 
 TRIVY_OUT="$OUTPUT_DIR/trivy-raw.json"
 SEMGREP_OUT="$OUTPUT_DIR/semgrep-raw.json"
@@ -160,6 +190,7 @@ echo -e "${BOLD}   LaravelShield CLI — Security Scan                     ${RES
 echo -e "${BOLD}████████████████████████████████████████████████████████████${RESET}"
 echo ""
 echo "  Project:  $PROJECT_PATH"
+echo "  Type:     $PROJECT_TYPE"
 echo "  Output:   $OUTPUT_DIR"
 echo "  Started:  $(date '+%Y-%m-%d %H:%M:%S')"
 
@@ -242,13 +273,57 @@ fi
 # ══════════════════════════════════════════════════════════════════════════════
 step "SCANNER 2/3 — Semgrep (SAST: Static Code Analysis)"
 echo ""
-info "Scanning: PHP source code, Blade templates..."
-info "Rules: php.laravel (official) + php.lang.security + generic.secrets"
+# Build Semgrep config flags based on detected project type
+SEMGREP_CONFIGS=("--config" "p/secrets")
+case "$PROJECT_TYPE" in
+    laravel|php)
+        SEMGREP_CONFIGS+=("--config" "p/php")
+        info "Scanning: PHP source code, Blade templates..."
+        info "Rules: php.lang.security + generic.secrets"
+        ;;
+    react|nextjs|node|vue|nuxt|svelte|angular)
+        SEMGREP_CONFIGS+=("--config" "p/javascript" "--config" "p/typescript")
+        info "Scanning: JavaScript/TypeScript source code..."
+        info "Rules: javascript + typescript + generic.secrets"
+        ;;
+    python)
+        SEMGREP_CONFIGS+=("--config" "p/python")
+        info "Scanning: Python source code..."
+        info "Rules: python.lang.security + generic.secrets"
+        ;;
+    ruby)
+        SEMGREP_CONFIGS+=("--config" "p/ruby")
+        info "Scanning: Ruby source code..."
+        info "Rules: ruby.lang.security + generic.secrets"
+        ;;
+    go)
+        SEMGREP_CONFIGS+=("--config" "p/golang")
+        info "Scanning: Go source code..."
+        info "Rules: golang.lang.security + generic.secrets"
+        ;;
+    rust)
+        SEMGREP_CONFIGS+=("--config" "p/rust")
+        info "Scanning: Rust source code..."
+        info "Rules: rust.lang.security + generic.secrets"
+        ;;
+    elixir)
+        info "Scanning: Elixir source code..."
+        info "Rules: generic.secrets (no official Elixir ruleset)"
+        ;;
+    java)
+        SEMGREP_CONFIGS+=("--config" "p/java")
+        info "Scanning: Java source code..."
+        info "Rules: java.lang.security + generic.secrets"
+        ;;
+    *)
+        info "Scanning: source code (generic rules)..."
+        info "Rules: generic.secrets"
+        ;;
+esac
 echo ""
 
 semgrep \
-    --config "p/php" \
-    --config "p/secrets" \
+    "${SEMGREP_CONFIGS[@]}" \
     --json \
     --output "$SEMGREP_OUT" \
     "${SEMGREP_EXCLUDES[@]}" \

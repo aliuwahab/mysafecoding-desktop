@@ -162,7 +162,7 @@ class Scanner extends Component
     public function selectFolder(): void
     {
         $path = Dialog::new()
-            ->title('Select Laravel Project')
+            ->title('Select Project Folder')
             ->folders()
             ->open();
 
