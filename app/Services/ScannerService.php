@@ -146,11 +146,18 @@ class ScannerService
                 }
             }
 
+            // Log code quality results (not counted as security findings)
+            $qualityTotal = $results['summary']['code_quality_total'] ?? 0;
+            if ($qualityTotal > 0) {
+                static::createLog($scanId, "Code quality analysis found {$qualityTotal} suggestions.", 'code_quality');
+            }
+
             $findingsCount = 0;
             if (isset($results['summary'])) {
                 foreach (['trivy_total', 'semgrep_total', 'gitleaks_total', 'laravel_rules_total', 'env_audit_total'] as $key) {
                     $findingsCount += $results['summary'][$key] ?? 0;
                 }
+                // Note: code_quality_total is intentionally NOT counted as security findings
             }
 
             $scan->update([
@@ -257,6 +264,9 @@ class ScannerService
         if (str_contains($lower, 'laravel rule') || str_contains($lower, 'laravel-specific')) {
             return 'laravel_rules';
         }
+        if (str_contains($lower, 'code quality') || str_contains($lower, 'best practice')) {
+            return 'code_quality';
+        }
 
         return 'system';
     }
@@ -273,6 +283,7 @@ class ScannerService
             'trivy' => null,
             'semgrep' => null,
             'gitleaks' => null,
+            'code_quality' => null,
             'summary' => [],
         ];
 
@@ -311,6 +322,20 @@ class ScannerService
             $gitleaks = json_decode(file_get_contents($gitleaksFile), true);
             $results['gitleaks'] = $gitleaks;
             $results['summary']['gitleaks_total'] = is_array($gitleaks) ? count($gitleaks) : 0;
+        }
+
+        $qualityFile = $outputDir.'/quality-raw.json';
+        if (file_exists($qualityFile)) {
+            $quality = json_decode(file_get_contents($qualityFile), true);
+            $results['code_quality'] = $quality;
+
+            $counts = ['ERROR' => 0, 'WARNING' => 0, 'INFO' => 0];
+            foreach ($quality['results'] ?? [] as $finding) {
+                $sev = $finding['extra']['severity'] ?? 'INFO';
+                $counts[$sev] = ($counts[$sev] ?? 0) + 1;
+            }
+            $results['summary']['code_quality'] = $counts;
+            $results['summary']['code_quality_total'] = array_sum($counts);
         }
 
         $summaryFile = $outputDir.'/summary.txt';

@@ -178,6 +178,7 @@ echo "$PROJECT_TYPE" > "$OUTPUT_DIR/project-type.txt"
 TRIVY_OUT="$OUTPUT_DIR/trivy-raw.json"
 SEMGREP_OUT="$OUTPUT_DIR/semgrep-raw.json"
 GITLEAKS_OUT="$OUTPUT_DIR/gitleaks-raw.json"
+QUALITY_OUT="$OUTPUT_DIR/quality-raw.json"
 SUMMARY_OUT="$OUTPUT_DIR/summary.txt"
 COMBINED_OUT="$OUTPUT_DIR/all-findings.json"
 
@@ -207,7 +208,7 @@ echo ""
 # ══════════════════════════════════════════════════════════════════════════════
 # SCANNER 1: TRIVY — Dependency Vulnerability Scan (SCA)
 # ══════════════════════════════════════════════════════════════════════════════
-step "SCANNER 1/3 — Trivy (SCA: Dependency CVEs)"
+step "SCANNER 1/4 — Trivy (SCA: Dependency CVEs)"
 echo ""
 info "Scanning: composer.lock, package-lock.json, yarn.lock..."
 info "Database: OSV + NVD (auto-updated on first run)"
@@ -271,7 +272,7 @@ fi
 # ══════════════════════════════════════════════════════════════════════════════
 # SCANNER 2: SEMGREP — Static Code Analysis (SAST)
 # ══════════════════════════════════════════════════════════════════════════════
-step "SCANNER 2/3 — Semgrep (SAST: Static Code Analysis)"
+step "SCANNER 2/4 — Semgrep (SAST: Static Code Analysis)"
 echo ""
 # Build Semgrep config flags based on detected project type
 SEMGREP_CONFIGS=("--config" "p/secrets")
@@ -367,7 +368,7 @@ fi
 # ══════════════════════════════════════════════════════════════════════════════
 # SCANNER 3: GITLEAKS — Secrets Detection
 # ══════════════════════════════════════════════════════════════════════════════
-step "SCANNER 3/3 — Gitleaks (Secrets: API keys, tokens, passwords)"
+step "SCANNER 3/4 — Gitleaks (Secrets: API keys, tokens, passwords)"
 echo ""
 info "Scanning: current files AND full git history..."
 echo ""
@@ -430,6 +431,111 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
+# SCANNER 4/4: SEMGREP CODE QUALITY — Best Practices & Code Standards
+# ══════════════════════════════════════════════════════════════════════════════
+step "SCANNER 4/4 — Code Quality (Best Practices & Standards)"
+echo ""
+
+# Build quality-specific Semgrep configs per project type
+QUALITY_CONFIGS=()
+case "$PROJECT_TYPE" in
+    laravel|php)
+        QUALITY_CONFIGS+=("--config" "p/phpcs-security-audit" "--config" "p/php")
+        info "Quality rules: PHP best practices, PSR standards, Laravel patterns"
+        ;;
+    react)
+        QUALITY_CONFIGS+=("--config" "p/react-best-practices" "--config" "p/eslint-plugin-react" "--config" "p/typescript")
+        info "Quality rules: React best practices, hooks rules, TypeScript patterns"
+        ;;
+    nextjs)
+        QUALITY_CONFIGS+=("--config" "p/nextjs" "--config" "p/react-best-practices" "--config" "p/typescript")
+        info "Quality rules: Next.js, React best practices, TypeScript patterns"
+        ;;
+    vue|nuxt)
+        QUALITY_CONFIGS+=("--config" "p/javascript" "--config" "p/typescript")
+        info "Quality rules: Vue/Nuxt JavaScript & TypeScript best practices"
+        ;;
+    node)
+        QUALITY_CONFIGS+=("--config" "p/nodejs" "--config" "p/typescript")
+        info "Quality rules: Node.js best practices, async patterns, TypeScript"
+        ;;
+    python)
+        QUALITY_CONFIGS+=("--config" "p/python" "--config" "p/bandit" "--config" "p/flask" "--config" "p/django")
+        info "Quality rules: Python best practices, PEP standards, framework patterns"
+        ;;
+    ruby)
+        QUALITY_CONFIGS+=("--config" "p/ruby" "--config" "p/rails")
+        info "Quality rules: Ruby best practices, Rails patterns"
+        ;;
+    go)
+        QUALITY_CONFIGS+=("--config" "p/golang" "--config" "p/gosec")
+        info "Quality rules: Go best practices, effective Go, gosec"
+        ;;
+    rust)
+        QUALITY_CONFIGS+=("--config" "p/rust")
+        info "Quality rules: Rust best practices, clippy-like patterns"
+        ;;
+    java)
+        QUALITY_CONFIGS+=("--config" "p/java" "--config" "p/spring")
+        info "Quality rules: Java best practices, Spring patterns"
+        ;;
+    elixir)
+        info "Skipping code quality (no Semgrep ruleset for Elixir)"
+        ;;
+    *)
+        info "Skipping code quality (unknown project type)"
+        ;;
+esac
+echo ""
+
+QUALITY_TOTAL=0
+if [ ${#QUALITY_CONFIGS[@]} -gt 0 ]; then
+    semgrep \
+        "${QUALITY_CONFIGS[@]}" \
+        --json \
+        --output "$QUALITY_OUT" \
+        "${SEMGREP_EXCLUDES[@]}" \
+        --quiet \
+        "$PROJECT_PATH" 2>/dev/null || true
+
+    if [ -f "$QUALITY_OUT" ] && [ -s "$QUALITY_OUT" ]; then
+        # Filter out findings already in the security scan to avoid duplicates
+        if [ -f "$SEMGREP_OUT" ] && [ -s "$SEMGREP_OUT" ]; then
+            # Get security finding check_ids and remove them from quality results
+            SECURITY_IDS=$(jq -r '[.results[]?.check_id] | unique | .[]' "$SEMGREP_OUT" 2>/dev/null || echo "")
+            if [ -n "$SECURITY_IDS" ]; then
+                # Create a temp file with deduplicated quality results
+                jq --argjson sec_ids "$(jq '[.results[]?.check_id] | unique' "$SEMGREP_OUT" 2>/dev/null || echo '[]')" \
+                    '.results = [.results[]? | select(.check_id as $id | $sec_ids | index($id) | not)]' \
+                    "$QUALITY_OUT" > "$QUALITY_OUT.tmp" 2>/dev/null && mv "$QUALITY_OUT.tmp" "$QUALITY_OUT"
+            fi
+        fi
+
+        QUALITY_ERROR=$(jq   '[.results[]? | select(.extra.severity=="ERROR")]   | length' "$QUALITY_OUT" 2>/dev/null || echo 0)
+        QUALITY_WARN=$(jq    '[.results[]? | select(.extra.severity=="WARNING")] | length' "$QUALITY_OUT" 2>/dev/null || echo 0)
+        QUALITY_INFO=$(jq    '[.results[]? | select(.extra.severity=="INFO")]    | length' "$QUALITY_OUT" 2>/dev/null || echo 0)
+        QUALITY_TOTAL=$((QUALITY_ERROR + QUALITY_WARN + QUALITY_INFO))
+
+        echo -e "  ${BOLD}Code Quality Results:${RESET}"
+        echo -e "  ┌────────────────────────────────────────┐"
+        echo -e "  │  NEEDS FIX     $QUALITY_ERROR"
+        echo -e "  │  IMPROVE       $QUALITY_WARN"
+        echo -e "  │  SUGGESTION    $QUALITY_INFO"
+        echo -e "  │  ─────────────────────────────────"
+        echo -e "  │  TOTAL         $QUALITY_TOTAL"
+        echo -e "  └────────────────────────────────────────┘"
+
+        ok "Code quality scan complete. Raw JSON saved to: $QUALITY_OUT"
+    else
+        echo '{"results":[],"errors":[]}' > "$QUALITY_OUT"
+        ok "Code quality: no issues found"
+    fi
+else
+    echo '{"results":[],"errors":[]}' > "$QUALITY_OUT"
+    ok "Code quality scan skipped (no ruleset for $PROJECT_TYPE)"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
 # COMBINED SUMMARY
 # ══════════════════════════════════════════════════════════════════════════════
 END_TIME=$(date +%s)
@@ -467,6 +573,9 @@ if   [ "$GITLEAKS_TOTAL" -gt 0 ]; then
 else
     echo -e "  │  ${GREEN}Gitleaks (Secrets)${RESET} $GITLEAKS_TOTAL          (clean ✔)                       │"
 fi
+
+echo ""
+echo -e "  │  ${CYAN}Code Quality${RESET}       $QUALITY_TOTAL          (not counted as security issues)  │"
 
 echo -e "  ├─────────────────────────────────────────────────────────┤"
 if   [ "$GRAND_TOTAL" -gt 0 ]; then
