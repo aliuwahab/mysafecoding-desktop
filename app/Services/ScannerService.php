@@ -40,7 +40,7 @@ class ScannerService
             'started_at' => now(),
         ]);
 
-        static::createLog($scan->id, 'Starting LaraGuard security scan...');
+        static::createLog($scan->id, 'Starting security scan...');
 
         $cmd = [
             'bash',
@@ -111,40 +111,46 @@ class ScannerService
 
             $results = static::parseResults($scan);
 
-            // Run Laravel-specific rule engine
-            static::createLog($scanId, 'Running Laravel-specific rule analysis...', 'laravel_rules');
-            $engine = new LaravelRuleEngine;
-            $laravelResults = $engine->analyze($scan->project_path);
-            $results['laravel_rules'] = $laravelResults;
-            $results['summary']['laravel_rules'] = $laravelResults['summary'];
-            $results['summary']['laravel_rules_total'] = $laravelResults['summary']['total'];
+            // Detect project type from scan output
+            $projectType = static::detectProjectType($scan);
+            $results['project_type'] = $projectType;
 
-            if ($laravelResults['summary']['total'] > 0) {
-                static::createLog($scanId, "Laravel Rule Engine found {$laravelResults['summary']['total']} issues ({$laravelResults['summary']['CRITICAL']} critical, {$laravelResults['summary']['HIGH']} high, {$laravelResults['summary']['MEDIUM']} medium).", 'laravel_rules');
-            } else {
-                static::createLog($scanId, 'Laravel Rule Engine: no issues found.', 'laravel_rules');
+            // Run Laravel-specific rule engine only for Laravel projects
+            if ($projectType === 'laravel') {
+                static::createLog($scanId, 'Running Laravel-specific rule analysis...', 'laravel_rules');
+                $engine = new LaravelRuleEngine;
+                $laravelResults = $engine->analyze($scan->project_path);
+                $results['laravel_rules'] = $laravelResults;
+                $results['summary']['laravel_rules'] = $laravelResults['summary'];
+                $results['summary']['laravel_rules_total'] = $laravelResults['summary']['total'];
+
+                if ($laravelResults['summary']['total'] > 0) {
+                    static::createLog($scanId, "Laravel Rule Engine found {$laravelResults['summary']['total']} issues ({$laravelResults['summary']['CRITICAL']} critical, {$laravelResults['summary']['HIGH']} high, {$laravelResults['summary']['MEDIUM']} medium).", 'laravel_rules');
+                } else {
+                    static::createLog($scanId, 'Laravel Rule Engine: no issues found.', 'laravel_rules');
+                }
             }
 
-            // Run .env audit
-            static::createLog($scanId, 'Running .env security audit...', 'system');
-            $envResults = EnvAuditor::audit($scan->project_path);
-            $results['env_audit'] = $envResults;
-            $results['summary']['env_audit'] = $envResults['summary'];
-            $results['summary']['env_audit_total'] = $envResults['summary']['total'];
+            // Run .env audit for any project with a .env file
+            if (file_exists(rtrim($scan->project_path, '/').'/.env')) {
+                static::createLog($scanId, 'Running .env security audit...', 'system');
+                $envResults = EnvAuditor::audit($scan->project_path);
+                $results['env_audit'] = $envResults;
+                $results['summary']['env_audit'] = $envResults['summary'];
+                $results['summary']['env_audit_total'] = $envResults['summary']['total'];
 
-            if ($envResults['summary']['total'] > 0) {
-                static::createLog($scanId, "Env audit found {$envResults['summary']['total']} issues ({$envResults['summary']['CRITICAL']} critical, {$envResults['summary']['HIGH']} high, {$envResults['summary']['MEDIUM']} medium).", 'system');
-            } else {
-                static::createLog($scanId, 'Env audit: no issues found.', 'system');
+                if ($envResults['summary']['total'] > 0) {
+                    static::createLog($scanId, "Env audit found {$envResults['summary']['total']} issues ({$envResults['summary']['CRITICAL']} critical, {$envResults['summary']['HIGH']} high, {$envResults['summary']['MEDIUM']} medium).", 'system');
+                } else {
+                    static::createLog($scanId, 'Env audit: no issues found.', 'system');
+                }
             }
 
             $findingsCount = 0;
             if (isset($results['summary'])) {
-                $findingsCount = ($results['summary']['trivy_total'] ?? 0)
-                    + ($results['summary']['semgrep_total'] ?? 0)
-                    + ($results['summary']['gitleaks_total'] ?? 0)
-                    + ($results['summary']['laravel_rules_total'] ?? 0)
-                    + ($results['summary']['env_audit_total'] ?? 0);
+                foreach (['trivy_total', 'semgrep_total', 'gitleaks_total', 'laravel_rules_total', 'env_audit_total'] as $key) {
+                    $findingsCount += $results['summary'][$key] ?? 0;
+                }
             }
 
             $scan->update([
@@ -334,6 +340,40 @@ class ScannerService
         usort($dirs, static fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
 
         return $dirs[0];
+    }
+
+    protected static function detectProjectType(Scan $scan): string
+    {
+        $outputDir = static::resolveOutputDirectory($scan);
+        if ($outputDir) {
+            $typeFile = $outputDir.'/project-type.txt';
+            if (file_exists($typeFile)) {
+                return trim(file_get_contents($typeFile));
+            }
+        }
+
+        // Fallback detection
+        $path = rtrim($scan->project_path, '/');
+        if (file_exists($path.'/artisan') && file_exists($path.'/composer.json')) {
+            return 'laravel';
+        }
+        if (file_exists($path.'/composer.json')) {
+            return 'php';
+        }
+        if (file_exists($path.'/package.json')) {
+            return 'node';
+        }
+        if (file_exists($path.'/requirements.txt') || file_exists($path.'/pyproject.toml')) {
+            return 'python';
+        }
+        if (file_exists($path.'/go.mod')) {
+            return 'go';
+        }
+        if (file_exists($path.'/mix.exs')) {
+            return 'elixir';
+        }
+
+        return 'unknown';
     }
 
     public static function installDependencies(): void
