@@ -197,6 +197,9 @@
                 <div class="flex items-center border-b border-slate-800 bg-slate-900/20">
                     @php
                         $tabs = ['log' => 'Log', 'summary' => 'Summary', 'trivy' => 'Dependencies', 'semgrep' => 'Code Analysis', 'gitleaks' => 'Secrets'];
+                        if (isset($results['code_quality']) && !empty($results['code_quality']['results'] ?? [])) {
+                            $tabs['code_quality'] = 'Code Quality';
+                        }
                         if (isset($results['laravel_rules'])) {
                             $tabs['laravel_rules'] = 'Laravel Rules';
                         }
@@ -219,6 +222,8 @@
                                 <span class="ml-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">{{ $results['summary']['semgrep_total'] }}</span>
                             @elseif ($tab === 'gitleaks' && isset($results['summary']['gitleaks_total']) && $results['summary']['gitleaks_total'] > 0)
                                 <span class="ml-1 px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">{{ $results['summary']['gitleaks_total'] }}</span>
+                            @elseif ($tab === 'code_quality' && isset($results['summary']['code_quality_total']) && $results['summary']['code_quality_total'] > 0)
+                                <span class="ml-1 px-1.5 py-0.5 bg-violet-500/20 text-violet-400 rounded text-[10px]">{{ $results['summary']['code_quality_total'] }}</span>
                             @elseif ($tab === 'laravel_rules' && isset($results['summary']['laravel_rules_total']) && $results['summary']['laravel_rules_total'] > 0)
                                 <span class="ml-1 px-1.5 py-0.5 bg-rose-500/20 text-rose-400 rounded text-[10px]">{{ $results['summary']['laravel_rules_total'] }}</span>
                             @elseif ($tab === 'env_audit' && isset($results['summary']['env_audit_total']) && $results['summary']['env_audit_total'] > 0)
@@ -250,6 +255,7 @@
                                             'semgrep' => 'bg-purple-500/10 text-purple-400',
                                             'gitleaks' => 'bg-amber-500/10 text-amber-400',
                                             'laravel_rules' => 'bg-rose-500/10 text-rose-400',
+                                            'code_quality' => 'bg-violet-500/10 text-violet-400',
                                             default => 'bg-slate-500/10 text-slate-500'
                                         } }}">{{ $log['scanner'] }}</span>
                                     <span class="{{ $log['level'] === 'error' ? 'text-red-400' : 'text-slate-300' }} break-all">{{ $log['line'] }}</span>
@@ -709,6 +715,98 @@
                         @else
                             <div class="flex items-center justify-center h-64 text-slate-600">
                                 <p>No Laravel Rules results available.</p>
+                            </div>
+                        @endif
+
+                    {{-- Code Quality Tab --}}
+                    @elseif ($activeTab === 'code_quality')
+                        @if ($results && isset($results['code_quality']))
+                            <div class="p-4">
+                                {{-- Info banner --}}
+                                <div class="mb-4 p-3 bg-violet-500/5 border border-violet-500/20 rounded-lg flex items-start gap-3">
+                                    <svg class="w-5 h-5 text-violet-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                                    </svg>
+                                    <div>
+                                        <p class="text-xs text-violet-300 font-medium">These are code quality suggestions, not security issues.</p>
+                                        <p class="text-xs text-slate-400 mt-1">Following these best practices improves maintainability, performance, and readability. They do not affect your security grade.</p>
+                                    </div>
+                                </div>
+
+                                {{-- Summary pills --}}
+                                @if (isset($results['summary']['code_quality']))
+                                    <div class="flex items-center gap-3 mb-4">
+                                        @if (($results['summary']['code_quality']['ERROR'] ?? 0) > 0)
+                                            <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                                {{ $results['summary']['code_quality']['ERROR'] }} Needs Fix
+                                            </span>
+                                        @endif
+                                        @if (($results['summary']['code_quality']['WARNING'] ?? 0) > 0)
+                                            <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                                {{ $results['summary']['code_quality']['WARNING'] }} Improvements
+                                            </span>
+                                        @endif
+                                        @if (($results['summary']['code_quality']['INFO'] ?? 0) > 0)
+                                            <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                {{ $results['summary']['code_quality']['INFO'] }} Suggestions
+                                            </span>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                <div class="space-y-2">
+                                    @forelse ($results['code_quality']['results'] ?? [] as $finding)
+                                        <div class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold
+                                                        {{ match($finding['extra']['severity'] ?? 'INFO') {
+                                                            'ERROR' => 'bg-orange-500/20 text-orange-400',
+                                                            'WARNING' => 'bg-yellow-500/20 text-yellow-400',
+                                                            default => 'bg-blue-500/20 text-blue-400'
+                                                        } }}">
+                                                        {{ match($finding['extra']['severity'] ?? 'INFO') {
+                                                            'ERROR' => 'NEEDS FIX',
+                                                            'WARNING' => 'IMPROVE',
+                                                            default => 'SUGGESTION'
+                                                        } }}
+                                                    </span>
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-500/10 text-violet-400">
+                                                        {{ last(explode('.', $finding['check_id'] ?? '')) }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-slate-300 mb-2">{{ Str::limit($finding['extra']['message'] ?? '', 300) }}</p>
+                                            <div class="text-xs">
+                                                <span class="text-slate-600">File:</span>
+                                                <span class="font-mono text-slate-400 ml-1">{{ $finding['path'] ?? '' }}:{{ $finding['start']['line'] ?? '' }}</span>
+                                            </div>
+                                            @if (!empty($finding['extra']['lines']))
+                                                <div class="mt-2 p-2 bg-slate-950 border border-slate-800 rounded text-xs font-mono text-slate-300 overflow-x-auto">
+                                                    <pre class="whitespace-pre-wrap">{{ Str::limit($finding['extra']['lines'], 500) }}</pre>
+                                                </div>
+                                            @endif
+                                            @if (!empty($finding['extra']['fix']))
+                                                <div class="mt-2 p-2 bg-violet-950/30 border border-violet-900/20 rounded text-xs text-violet-300">
+                                                    <span class="font-semibold">Suggested fix:</span> {{ $finding['extra']['fix'] }}
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @empty
+                                        <div class="flex items-center justify-center h-64 text-emerald-400">
+                                            <div class="text-center">
+                                                <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <p class="text-sm">Code quality looks great!</p>
+                                            </div>
+                                        </div>
+                                    @endforelse
+                                </div>
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center h-64 text-slate-600">
+                                <p>No code quality results available.</p>
                             </div>
                         @endif
 
