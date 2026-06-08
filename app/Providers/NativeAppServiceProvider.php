@@ -15,7 +15,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             Menu::make(
                 Menu::link('/', 'New Scan'),
                 Menu::separator(),
-                Menu::link('https://github.com/aliuwahab/larashield-cli', 'CLI on GitHub')
+                Menu::link('https://github.com/aliuwahab/laraguard-desktop', 'Desktop on GitHub')
                     ->openInBrowser(),
             )->label('Scan'),
             Menu::edit(),
@@ -31,7 +31,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->backgroundColor('#0f172a')
             ->rememberState()
             ->titleBarHidden()
-            ->title('LaraGuard');
+            ->title('MySafeCoding');
     }
 
     public function phpIni(): array

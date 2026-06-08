@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
-# LaravelShield CLI — Setup Script
+# MySafeCoding CLI — Setup Script
 # Installs Trivy, Semgrep, and Gitleaks on macOS via Homebrew
-# Run: chmod +x laravelshield-setup.sh
+# Run: chmod +x mysafecoding-setup.sh
 # =============================================================================
 
 set -e  # Exit on any error
@@ -24,7 +24,7 @@ step() { echo -e "\n${BOLD}${BLUE}── $1 ────────────
 
 echo ""
 echo -e "${BOLD}████████████████████████████████████████████████████${RESET}"
-echo -e "${BOLD}   LaravelShield CLI — Setup (macOS)    ${RESET}"
+echo -e "${BOLD}   MySafeCoding CLI — Setup (macOS)    ${RESET}"
 echo -e "${BOLD}████████████████████████████████████████████████████${RESET}"
 echo ""
 
@@ -88,5 +88,5 @@ echo "  - Gitleaks: $(gitleaks version 2>&1)"
 echo "  - jq:       $(jq --version)"
 echo ""
 echo -e "${BOLD}Next step:${RESET} Run the scan script:"
-echo "  laravelshield-scan.sh /path/to/your/project"
+echo "  mysafecoding-scan.sh /path/to/your/project"
 echo ""

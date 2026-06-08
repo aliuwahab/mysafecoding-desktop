@@ -1,11 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "mysafecoding/desktop",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "MySafeCoding desktop security scanner.",
     "keywords": [
-        "laravel",
-        "framework"
+        "security",
+        "scanner",
+        "nativephp"
     ],
     "license": "MIT",
     "require": {
