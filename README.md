@@ -1,35 +1,37 @@
-# LaraGuard
+# MySafeCoding
 
-LaraGuard is a NativePHP desktop app for scanning Laravel projects locally.
+MySafeCoding is a NativePHP desktop app for scanning local projects across popular languages and frameworks.
 
-It wraps the bundled `laravelshield` CLI scripts in a desktop UI so a developer can:
+It wraps the bundled `mysafecoding` CLI scripts in a desktop UI so a developer can:
 
-- pick a Laravel project folder
+- pick a project folder
 - run a security scan without touching the terminal
 - watch scan output in real time
-- inspect Trivy, Semgrep, and Gitleaks results
+- inspect Trivy, Semgrep, Gitleaks, framework-specific, environment, and quality results
 - keep local scan history
 - export results as JSON
 
 ## Product Direction
 
-This repository is the local desktop implementation of the broader LaravelShield vision documented in [WARP.md](./WARP.md).
+This repository is the local desktop implementation of the broader MySafeCoding vision documented in [WARP.md](./WARP.md).
 
-Today, LaraGuard is the fast local scanner experience:
+Today, MySafeCoding is the fast local scanner experience:
 
 - local-first
 - zero SaaS dependency
 - SQLite-backed
 - NativePHP desktop shell
-- Laravel + Livewire UI
+- Laravel-powered Livewire UI
+- multi-language scanning for PHP, JavaScript/TypeScript, Python, Ruby, Go, Rust, Elixir, Java, and .NET
+- popular framework detection for Laravel, Symfony, Next.js, Nuxt, React, Vue, Svelte, Angular, NestJS, Express, Django, Flask, FastAPI, Rails, Phoenix, and Spring
 
-The larger LaravelShield direction is a full Laravel-native security platform for Laravel and PHP teams, including:
+The larger MySafeCoding direction is a hosted security platform for teams, including:
 
 - hosted dashboard
 - APIs and webhooks
 - nightly scanning
 - team workflows
-- Laravel-specific rule intelligence
+- hosted custom rule intelligence
 - compliance and reporting
 
 This app is the practical first surface: a downloadable desktop scanner that proves the workflow end to end.
@@ -40,9 +42,9 @@ The app is a Laravel application running inside NativePHP/Electron.
 
 ### Scan flow
 
-1. The user selects a Laravel project folder in the desktop UI.
+1. The user selects a project folder in the desktop UI.
 2. A `Scan` record is created in SQLite.
-3. The app starts the bundled bash scanner in `resources/cli/laravelshield-scan.sh`.
+3. The app starts the bundled bash scanner in `resources/cli/mysafecoding-scan.sh`.
 4. NativePHP child-process events stream logs back into the app.
 5. Raw scanner output is written into `resources/cli/ls-output/...`.
 6. The app parses the JSON artifacts and stores normalized results on the scan record.
@@ -53,6 +55,9 @@ The app is a Laravel application running inside NativePHP/Electron.
 - Trivy for dependency vulnerability scanning
 - Semgrep for static analysis
 - Gitleaks for secrets detection
+- framework-specific custom rules when a supported rule pack is available
+- `.env` auditing when an environment file is present
+- Semgrep-backed code quality suggestions
 - `jq` for parsing and summary generation in the bundled scripts
 
 ## Tech Stack
@@ -76,9 +81,9 @@ app/
 
 resources/
   cli/
-    laravelshield-scan.sh
-    laravelshield-setup.sh
-    laravelshield-inspect.sh
+    mysafecoding-scan.sh
+    mysafecoding-setup.sh
+    mysafecoding-inspect.sh
   views/livewire/scanner.blade.php
 
 database/
@@ -150,8 +155,11 @@ If you add migrations for app state used in the desktop app, they must be availa
 - real-time log streaming
 - summary tab with aggregated counts
 - Trivy / Semgrep / Gitleaks result tabs
+- Framework Rules tab when a framework-specific rule pack is available
+- .env Audit and Code Quality tabs
 - JSON export
 - first-run dependency check screen
+- hosted scan CTA that opens https://www.mysafecoding.com/
 
 ## Notes
 
@@ -161,13 +169,13 @@ If you add migrations for app state used in the desktop app, they must be availa
 
 ## Next Product Layer
 
-The next step after this desktop app is not “more Laravel boilerplate.” It is moving upward into the LaravelShield platform described in `WARP.md`:
+The next step after this desktop app is moving upward into the MySafeCoding platform described in `WARP.md`:
 
 - shared scan API
 - hosted team dashboard
 - repository integrations
 - scheduled scans
-- Laravel-specific rules engine
+- hosted custom rules engine
 - compliance reporting
 - billing and organization workflows
 

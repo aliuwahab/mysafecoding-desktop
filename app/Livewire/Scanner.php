@@ -13,7 +13,21 @@ use Native\Desktop\Facades\Shell;
 
 class Scanner extends Component
 {
-    private const DEFAULT_EXCLUSIONS = ['vendor', 'node_modules', 'storage', 'bootstrap/cache', 'public/build'];
+    private const DEFAULT_EXCLUSIONS = [
+        'vendor',
+        'node_modules',
+        'storage',
+        'bootstrap/cache',
+        'public/build',
+        'dist',
+        'build',
+        'coverage',
+        '.next',
+        '.nuxt',
+        '.venv',
+        '__pycache__',
+        'target',
+    ];
 
     public ?string $projectPath = null;
 
@@ -298,7 +312,7 @@ class Scanner extends Component
 
         $path = Dialog::new()
             ->title('Save Scan Report')
-            ->defaultPath('laraguard-report.json')
+            ->defaultPath('mysafecoding-report.json')
             ->save();
 
         if ($path) {
@@ -308,7 +322,7 @@ class Scanner extends Component
 
     public function openComprehensiveScan(): void
     {
-        Shell::openExternal('https://laravelguard.com/');
+        Shell::openExternal('https://www.mysafecoding.com/');
     }
 
     public function getSecurityGrade(): array
@@ -362,6 +376,7 @@ class Scanner extends Component
             'gitleaks' => ($newSummary['gitleaks_total'] ?? 0) - ($oldSummary['gitleaks_total'] ?? 0),
             'laravel_rules' => ($newSummary['laravel_rules_total'] ?? 0) - ($oldSummary['laravel_rules_total'] ?? 0),
             'env_audit' => ($newSummary['env_audit_total'] ?? 0) - ($oldSummary['env_audit_total'] ?? 0),
+            'code_quality' => ($newSummary['code_quality_total'] ?? 0) - ($oldSummary['code_quality_total'] ?? 0),
             'total' => (($newSummary['trivy_total'] ?? 0) + ($newSummary['semgrep_total'] ?? 0) + ($newSummary['gitleaks_total'] ?? 0) + ($newSummary['laravel_rules_total'] ?? 0) + ($newSummary['env_audit_total'] ?? 0))
                 - (($oldSummary['trivy_total'] ?? 0) + ($oldSummary['semgrep_total'] ?? 0) + ($oldSummary['gitleaks_total'] ?? 0) + ($oldSummary['laravel_rules_total'] ?? 0) + ($oldSummary['env_audit_total'] ?? 0)),
         ];

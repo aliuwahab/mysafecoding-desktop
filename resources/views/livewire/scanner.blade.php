@@ -23,10 +23,20 @@
         <span class="mono" style="color:var(--fg-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
             {{ $projectPath ?: '~/Code/…' }}
         </span>
-        @if ($projectPath && isset($results['project_type']) && $results['project_type'] !== 'unknown')
-            <span style="font-size:10px;font-weight:600;color:var(--accent);padding:1px 6px;border-radius:4px;background:color-mix(in srgb,var(--accent) 14%,transparent);letter-spacing:0.04em;">{{ strtoupper($results['project_type']) }}</span>
+        @php
+            $projectTypeLabels = [
+                'laravel' => 'Laravel', 'symfony' => 'Symfony', 'php' => 'PHP',
+                'nextjs' => 'Next.js', 'nuxt' => 'Nuxt', 'react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte', 'angular' => 'Angular', 'nestjs' => 'NestJS', 'express' => 'Express', 'node' => 'Node',
+                'django' => 'Django', 'flask' => 'Flask', 'fastapi' => 'FastAPI', 'python' => 'Python',
+                'rails' => 'Rails', 'ruby' => 'Ruby', 'go' => 'Go', 'rust' => 'Rust', 'phoenix' => 'Phoenix', 'elixir' => 'Elixir', 'spring' => 'Spring', 'java' => 'Java', 'dotnet' => '.NET',
+            ];
+            $projectType = $results['project_type'] ?? null;
+            $projectLabel = $projectTypeLabels[$projectType] ?? ($projectPath ? 'Project' : null);
+        @endphp
+        @if ($projectPath && $projectLabel)
+            <span style="font-size:10px;font-weight:600;color:var(--accent);padding:1px 6px;border-radius:4px;background:color-mix(in srgb,var(--accent) 14%,transparent);letter-spacing:0.04em;">{{ $projectLabel }}</span>
         @elseif ($projectPath)
-            <span style="font-size:10px;font-weight:600;color:var(--accent);padding:1px 6px;border-radius:4px;background:color-mix(in srgb,var(--accent) 14%,transparent);letter-spacing:0.04em;">LARAVEL</span>
+            <span style="font-size:10px;font-weight:600;color:var(--accent);padding:1px 6px;border-radius:4px;background:color-mix(in srgb,var(--accent) 14%,transparent);letter-spacing:0.04em;">Selected</span>
         @endif
     </div>
 
@@ -66,8 +76,8 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><path d="M12 2 4 5v7c0 4.5 3.4 8.3 8 10 4.6-1.7 8-5.5 8-10V5l-8-3Z"/></svg>
         </div>
         <div style="display:flex;flex-direction:column;line-height:1;">
-            <span class="serif" style="font-size:19px;color:var(--fg-1);letter-spacing:-0.01em;">Laraguard</span>
-            <span style="font-size:10.5px;color:var(--fg-3);margin-top:2px;letter-spacing:0.04em;">v1.1 · local scanner</span>
+            <span class="serif" style="font-size:19px;color:var(--fg-1);letter-spacing:-0.01em;">MySafeCoding</span>
+            <span style="font-size:10.5px;color:var(--fg-3);margin-top:2px;letter-spacing:0.04em;">v1.2 · multi-stack local scanner</span>
         </div>
     </div>
 
@@ -83,9 +93,9 @@
                 <span class="kbd" style="background:rgba(0,0,0,0.25);border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.85);">N</span>
             </span>
         </button>
-        <button wire:click="openComprehensiveScan" style="height:30px;padding:0 10px;display:flex;align-items:center;gap:8px;color:var(--fg-2);border:1px dashed var(--line-1);border-radius:7px;font-size:11.5px;justify-content:center;">
+        <button wire:click="openComprehensiveScan" title="Open MySafeCoding hosted scans" style="height:30px;padding:0 10px;display:flex;align-items:center;gap:8px;color:var(--fg-2);border:1px dashed var(--line-1);border-radius:7px;font-size:11.5px;justify-content:center;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-hi);"><path d="M12 3v5M12 16v5M3 12h5M16 12h5M6 6l3 3M15 15l3 3M6 18l3-3M15 9l3-3"/></svg>
-            <span>Comprehensive scan</span>
+            <span>Hosted scan</span>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-4);"><path d="m9 6 6 6-6 6"/></svg>
         </button>
     </div>
@@ -149,7 +159,7 @@
             <span style="width:6px;height:6px;border-radius:50%;background:var(--sev-ok);display:block;"></span>
             All engines ready
         </span>
-        <span class="mono">php 8.4</span>
+        <span class="mono">local</span>
     </div>
 </aside>
 
@@ -165,7 +175,7 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-medium);"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
             </div>
             <h2 style="font-size:18px;font-weight:600;color:var(--fg-1);margin:0 0 8px;">Setup Required</h2>
-            <p style="font-size:13px;color:var(--fg-3);margin:0;">Laraguard needs the following tools installed:</p>
+            <p style="font-size:13px;color:var(--fg-3);margin:0;">MySafeCoding needs the following tools installed:</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
             @foreach (['trivy', 'semgrep', 'gitleaks', 'jq'] as $tool)
@@ -231,6 +241,9 @@
     $gitleaksTotal = $summary['gitleaks_total'] ?? 0;
     $laravelTotal = $summary['laravel_rules_total'] ?? 0;
     $envTotal = $summary['env_audit_total'] ?? 0;
+    $codeQualityTotal = $summary['code_quality_total'] ?? 0;
+    $scanProjectType = $this->results['project_type'] ?? null;
+    $isLaravelProject = $scanProjectType === 'laravel' || $laravelTotal > 0;
     $tabs = [
         ['id'=>'log',          'label'=>'Log',          'count'=>null,          'color'=>null,
          'icon'=>'<path d="m5 9 3 3-3 3M12 15h7"/><rect x="2" y="4" width="20" height="16" rx="2"/>'],
@@ -242,11 +255,17 @@
          'icon'=>'<path d="m8 6-6 6 6 6M16 6l6 6-6 6M14 4 10 20"/>'],
         ['id'=>'gitleaks',     'label'=>'Secrets',      'count'=>$gitleaksTotal,'color'=>'var(--sev-critical)',
          'icon'=>'<circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9M16 8l3 3M14 10l3 3"/>'],
-        ['id'=>'laravel_rules','label'=>'Laravel',      'count'=>$laravelTotal, 'color'=>'var(--accent-hi)',
-         'icon'=>'<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>'],
         ['id'=>'env_audit',    'label'=>'.env',         'count'=>$envTotal,     'color'=>'var(--sev-ok)',
          'icon'=>'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>'],
+        ['id'=>'code_quality', 'label'=>'Quality',      'count'=>$codeQualityTotal, 'color'=>'#c69dff',
+         'icon'=>'<path d="m12 3 1.9 5.8h6.1l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8-4.9-3.6h6.1L12 3Z"/>'],
     ];
+    if ($isLaravelProject) {
+        array_splice($tabs, 5, 0, [[
+            'id'=>'laravel_rules', 'label'=>'Framework', 'count'=>$laravelTotal, 'color'=>'var(--accent-hi)',
+            'icon'=>'<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>',
+        ]]);
+    }
 @endphp
 <div style="display:flex;align-items:stretch;border-bottom:1px solid var(--line-1);background:var(--bg-1);padding-left:12px;position:relative;">
     @foreach ($tabs as $tab)
@@ -281,6 +300,7 @@
         'gitleaks' => ['bg'=>'rgba(255,77,77,0.14)',   'fg'=>'var(--sev-critical)'],
         'laravel_rules'=>['bg'=>'rgba(245,48,3,0.14)', 'fg'=>'var(--accent-hi)'],
         'env_audit'=> ['bg'=>'rgba(61,214,140,0.14)',  'fg'=>'var(--sev-ok)'],
+        'code_quality'=> ['bg'=>'rgba(200,150,255,0.14)', 'fg'=>'#c69dff'],
     ];
 @endphp
 <div style="flex:1;display:flex;flex-direction:column;background:var(--log-bg);min-height:0;">
@@ -354,7 +374,7 @@
             @if ($grandTotal === 0)
               No issues found — ship with confidence.
             @else
-              <span style="color:var(--accent);">{{ $grandTotal }} findings</span> across five engines.
+              <span style="color:var(--accent);">{{ $grandTotal }} findings</span> across local security engines.
               Address <span style="color:{{ $gradeColor }};">{{ $gitleaksTotal + ($summary['trivy']['CRITICAL'] ?? 0) + ($summary['laravel_rules']['CRITICAL'] ?? 0) }} blockers</span> before deploy.
             @endif
           </div>
@@ -382,7 +402,13 @@
       <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between;">
         <div style="font-size:10.5px;color:var(--fg-3);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">Findings breakdown</div>
         <div style="display:flex;flex-direction:column;gap:7px;">
-          @foreach ([['Trivy', $trivyTotal, 'var(--sev-low)'], ['Semgrep', $semgrepTotal, '#c69dff'], ['Gitleaks', $gitleaksTotal, 'var(--sev-critical)'], ['Laravel', $laravelTotal, 'var(--accent-hi)'], ['.env', $envTotal, 'var(--sev-ok)']] as [$el, $ev, $ec])
+          @php
+            $breakdownItems = [['Trivy', $trivyTotal, 'var(--sev-low)'], ['Semgrep', $semgrepTotal, '#c69dff'], ['Gitleaks', $gitleaksTotal, 'var(--sev-critical)']];
+            if ($isLaravelProject) $breakdownItems[] = ['Framework', $laravelTotal, 'var(--accent-hi)'];
+            $breakdownItems[] = ['.env', $envTotal, 'var(--sev-ok)'];
+            $breakdownItems[] = ['Quality', $codeQualityTotal, '#c69dff'];
+          @endphp
+          @foreach ($breakdownItems as [$el, $ev, $ec])
             <div style="display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
               <span style="color:var(--fg-2);">{{ $el }}</span>
               <span class="mono" style="color:{{ $ev > 0 ? $ec : 'var(--fg-4)' }};font-weight:600;">{{ $ev }}</span>
@@ -397,7 +423,7 @@
     </div>
 
     {{-- Engine stat cards --}}
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:22px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:22px;">
       @php
         $engineCards = [
           ['Dependencies', $trivyTotal, 'var(--sev-low)', 'Trivy · SCA',
@@ -406,11 +432,17 @@
            [['ERR',$summary['semgrep']['ERROR']??0],['WARN',$summary['semgrep']['WARNING']??0],['INFO',$summary['semgrep']['INFO']??0]]],
           ['Secrets', $gitleaksTotal, 'var(--sev-critical)', 'Gitleaks',
            [['LEAKED',$gitleaksTotal]]],
-          ['Laravel Rules', $laravelTotal, 'var(--accent-hi)', '20 custom rules',
-           [['CRIT',$summary['laravel_rules']['CRITICAL']??0],['HIGH',$summary['laravel_rules']['HIGH']??0],['MED',$summary['laravel_rules']['MEDIUM']??0]]],
           ['.env Audit', $envTotal, 'var(--sev-ok)', '32 vars checked',
            [['HIGH',$summary['env_audit']['HIGH']??0],['MED',$summary['env_audit']['MEDIUM']??0],['INFO',$summary['env_audit']['INFO']??0]]],
+          ['Quality', $codeQualityTotal, '#c69dff', 'Best practices',
+           [['FIX',$summary['code_quality']['ERROR']??0],['IMP',$summary['code_quality']['WARNING']??0],['INFO',$summary['code_quality']['INFO']??0]]],
         ];
+        if ($isLaravelProject) {
+          array_splice($engineCards, 3, 0, [[
+            'Framework Rules', $laravelTotal, 'var(--accent-hi)', 'Laravel rule pack',
+            [['CRIT',$summary['laravel_rules']['CRITICAL']??0],['HIGH',$summary['laravel_rules']['HIGH']??0],['MED',$summary['laravel_rules']['MEDIUM']??0]],
+          ]]);
+        }
       @endphp
       @foreach ($engineCards as [$label, $total, $color, $sub, $breakdown])
         <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:10px;padding:14px 14px 12px;display:flex;flex-direction:column;">
@@ -451,8 +483,14 @@
           $sevRows = [
             ['Dependencies (Trivy)', [['CRITICAL',$summary['trivy']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['trivy']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['trivy']['MEDIUM']??0,'var(--sev-medium)'],['LOW',$summary['trivy']['LOW']??0,'var(--sev-low)']]],
             ['Code Analysis (Semgrep)', [['ERROR',$summary['semgrep']['ERROR']??0,'var(--sev-critical)'],['WARNING',$summary['semgrep']['WARNING']??0,'var(--sev-medium)'],['INFO',$summary['semgrep']['INFO']??0,'var(--sev-info)']]],
-            ['Laravel Rules', [['CRITICAL',$summary['laravel_rules']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['laravel_rules']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['laravel_rules']['MEDIUM']??0,'var(--sev-medium)']]],
+            ['.env Audit', [['CRITICAL',$summary['env_audit']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['env_audit']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['env_audit']['MEDIUM']??0,'var(--sev-medium)'],['INFO',$summary['env_audit']['INFO']??0,'var(--sev-info)']]],
           ];
+          if ($isLaravelProject) {
+            array_splice($sevRows, 2, 0, [[
+              'Framework Rules',
+              [['CRITICAL',$summary['laravel_rules']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['laravel_rules']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['laravel_rules']['MEDIUM']??0,'var(--sev-medium)']],
+            ]]);
+          }
           $maxSevRow = max([...array_map(fn($r) => array_sum(array_column($r[1],1)), $sevRows), 1]);
         @endphp
         @foreach ($sevRows as [$rl, $rd])
@@ -478,7 +516,13 @@
         </div>
         @if ($scanDiff)
           <p style="font-size:11px;color:var(--fg-3);margin-bottom:10px;">{{ $scanDiff['old_date'] }} → {{ $scanDiff['new_date'] }}</p>
-          @foreach ([['Total',$scanDiff['total']],['Trivy',$scanDiff['trivy']],['Semgrep',$scanDiff['semgrep']],['Gitleaks',$scanDiff['gitleaks']],['Laravel',$scanDiff['laravel_rules']],['.env',$scanDiff['env_audit']]] as [$dl,$dd])
+          @php
+            $diffRows = [['Total',$scanDiff['total']],['Trivy',$scanDiff['trivy']],['Semgrep',$scanDiff['semgrep']],['Gitleaks',$scanDiff['gitleaks']]];
+            if ($isLaravelProject) $diffRows[] = ['Framework',$scanDiff['laravel_rules']];
+            $diffRows[] = ['.env',$scanDiff['env_audit']];
+            $diffRows[] = ['Quality',$scanDiff['code_quality'] ?? 0];
+          @endphp
+          @foreach ($diffRows as [$dl,$dd])
             <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-2);">
               <span style="font-size:11.5px;color:var(--fg-2);font-weight:{{ $dl==='Total'?'600':'400' }};">{{ $dl }}</span>
               <span style="font-size:11.5px;font-weight:500;color:{{ $dd < 0 ? 'var(--sev-ok)' : ($dd > 0 ? 'var(--sev-critical)' : 'var(--fg-3)') }};">
@@ -512,7 +556,7 @@
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Dependency vulnerabilities</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $trivyTotal }} results</span>
         <span style="flex:1;"></span>
-        <span style="font-size:11.5px;color:var(--fg-3);">Trivy · composer.lock + package-lock.json</span>
+        <span style="font-size:11.5px;color:var(--fg-3);">Trivy · lockfiles and manifests</span>
     </div>
     <div style="padding:4px 32px 32px;">
       @if (!empty($results['trivy']['Results']))
@@ -568,7 +612,7 @@
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Static analysis findings</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $semgrepTotal }} results</span>
         <span style="flex:1;"></span>
-        <span style="font-size:11.5px;color:var(--fg-3);">Semgrep · PHP files · rules</span>
+        <span style="font-size:11.5px;color:var(--fg-3);">Semgrep · language-aware rules</span>
     </div>
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
         @forelse ($results['semgrep']['results'] ?? [] as $finding)
@@ -668,10 +712,10 @@
 @elseif ($activeTab === 'laravel_rules')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
     <div style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
-        <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Laravel-specific rules</h2>
+        <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Framework rules</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $laravelTotal }} results</span>
         <span style="flex:1;"></span>
-        <span style="font-size:11.5px;color:var(--fg-3);">20 custom rules · ORM, routing, config</span>
+        <span style="font-size:11.5px;color:var(--fg-3);">Laravel rule pack · ORM, routing, config</span>
     </div>
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @forelse ($results['laravel_rules']['findings'] ?? [] as $finding)
@@ -717,7 +761,7 @@
         @empty
           <div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--sev-ok);flex-direction:column;gap:8px;">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>
-            <span style="font-size:13px;">No Laravel-specific issues found.</span>
+            <span style="font-size:13px;">No framework rule issues found.</span>
           </div>
         @endforelse
     </div>

@@ -1,16 +1,16 @@
 #!/bin/bash
 # =============================================================================
-# LaravelShield CLI — Scan Runner
-# Runs Trivy + Semgrep + Gitleaks against a Laravel project and produces
+# MySafeCoding CLI — Scan Runner
+# Runs Trivy + Semgrep + Gitleaks against a project and produces
 # a clean summary + raw JSON files for analysis.
 #
 # Usage:
-#   ./laravelshield-scan.sh /path/to/project [--exclude <folder>] [--exclude <folder>]
+#   ./mysafecoding-scan.sh /path/to/project [--exclude <folder>] [--exclude <folder>]
 #
 # Examples:
-#   ./laravelshield-scan.sh .
-#   ./laravelshield-scan.sh /var/www/myapp --exclude vendor
-#   ./laravelshield-scan.sh /var/www/myapp --exclude vendor --exclude tests --exclude _ide_helper.php
+#   ./mysafecoding-scan.sh .
+#   ./mysafecoding-scan.sh /var/www/myapp --exclude vendor
+#   ./mysafecoding-scan.sh /var/www/myapp --exclude vendor --exclude tests --exclude _ide_helper.php
 #
 # Default exclusions (always applied unless you use --no-defaults):
 #   vendor, node_modules, storage, bootstrap/cache, public/build
@@ -53,13 +53,13 @@ step() { echo -e "\n${BOLD}${CYAN}╔══════════════�
 if [ -z "$1" ]; then
     echo ""
     echo -e "${BOLD}Usage:${RESET}"
-    echo "  ./laravelshield-scan.sh /path/to/project [--exclude folder] [--exclude file]"
+    echo "  ./mysafecoding-scan.sh /path/to/project [--exclude folder] [--exclude file]"
     echo ""
     echo -e "${BOLD}Examples:${RESET}"
-    echo "  ./laravelshield-scan.sh ."
-    echo "  ./laravelshield-scan.sh /var/www/myapp --exclude vendor"
-    echo "  ./laravelshield-scan.sh /var/www/myapp --exclude vendor --exclude tests --exclude _ide_helper.php"
-    echo "  ./laravelshield-scan.sh /var/www/myapp --no-defaults --exclude vendor"
+    echo "  ./mysafecoding-scan.sh ."
+    echo "  ./mysafecoding-scan.sh /var/www/myapp --exclude vendor"
+    echo "  ./mysafecoding-scan.sh /var/www/myapp --exclude vendor --exclude tests --exclude _ide_helper.php"
+    echo "  ./mysafecoding-scan.sh /var/www/myapp --no-defaults --exclude vendor"
     echo ""
     exit 1
 fi
@@ -130,38 +130,83 @@ fi
 
 # ── Detect project type ───────────────────────────────────────────────────
 PROJECT_TYPE="unknown"
-if [ -f "$PROJECT_PATH/artisan" ] && [ -f "$PROJECT_PATH/composer.json" ]; then
-    PROJECT_TYPE="laravel"
-elif [ -f "$PROJECT_PATH/composer.json" ]; then
-    PROJECT_TYPE="php"
+json_pkg_exists() {
+    local file="$1"
+    local package="$2"
+    jq -e --arg package "$package" '
+      (.dependencies // {}) + (.devDependencies // {}) + (.peerDependencies // {}) + (.optionalDependencies // {})
+      | has($package)
+    ' "$file" >/dev/null 2>&1
+}
+
+file_contains() {
+    local file="$1"
+    local needle="$2"
+    [ -f "$file" ] && grep -qi "$needle" "$file" 2>/dev/null
+}
+
+if [ -f "$PROJECT_PATH/composer.json" ]; then
+    if [ -f "$PROJECT_PATH/artisan" ] || file_contains "$PROJECT_PATH/composer.json" '"laravel/framework"'; then
+        PROJECT_TYPE="laravel"
+    elif file_contains "$PROJECT_PATH/composer.json" '"symfony/framework-bundle"'; then
+        PROJECT_TYPE="symfony"
+    else
+        PROJECT_TYPE="php"
+    fi
 elif [ -f "$PROJECT_PATH/package.json" ]; then
-    if grep -q '"next"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+    if json_pkg_exists "$PROJECT_PATH/package.json" "next"; then
         PROJECT_TYPE="nextjs"
-    elif grep -q '"nuxt"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+    elif json_pkg_exists "$PROJECT_PATH/package.json" "nuxt"; then
         PROJECT_TYPE="nuxt"
-    elif grep -q '"react"' "$PROJECT_PATH/package.json" 2>/dev/null; then
-        PROJECT_TYPE="react"
-    elif grep -q '"vue"' "$PROJECT_PATH/package.json" 2>/dev/null; then
-        PROJECT_TYPE="vue"
-    elif grep -q '"svelte"' "$PROJECT_PATH/package.json" 2>/dev/null; then
-        PROJECT_TYPE="svelte"
-    elif grep -q '"angular"' "$PROJECT_PATH/package.json" 2>/dev/null; then
+    elif json_pkg_exists "$PROJECT_PATH/package.json" "@angular/core" || json_pkg_exists "$PROJECT_PATH/package.json" "angular"; then
         PROJECT_TYPE="angular"
+    elif json_pkg_exists "$PROJECT_PATH/package.json" "svelte"; then
+        PROJECT_TYPE="svelte"
+    elif json_pkg_exists "$PROJECT_PATH/package.json" "vue"; then
+        PROJECT_TYPE="vue"
+    elif json_pkg_exists "$PROJECT_PATH/package.json" "react"; then
+        PROJECT_TYPE="react"
+    elif json_pkg_exists "$PROJECT_PATH/package.json" "@nestjs/core"; then
+        PROJECT_TYPE="nestjs"
+    elif json_pkg_exists "$PROJECT_PATH/package.json" "express"; then
+        PROJECT_TYPE="express"
     else
         PROJECT_TYPE="node"
     fi
 elif [ -f "$PROJECT_PATH/requirements.txt" ] || [ -f "$PROJECT_PATH/pyproject.toml" ] || [ -f "$PROJECT_PATH/setup.py" ]; then
-    PROJECT_TYPE="python"
+    if file_contains "$PROJECT_PATH/requirements.txt" "django" || file_contains "$PROJECT_PATH/pyproject.toml" "django" || file_contains "$PROJECT_PATH/setup.py" "django"; then
+        PROJECT_TYPE="django"
+    elif file_contains "$PROJECT_PATH/requirements.txt" "fastapi" || file_contains "$PROJECT_PATH/pyproject.toml" "fastapi" || file_contains "$PROJECT_PATH/setup.py" "fastapi"; then
+        PROJECT_TYPE="fastapi"
+    elif file_contains "$PROJECT_PATH/requirements.txt" "flask" || file_contains "$PROJECT_PATH/pyproject.toml" "flask" || file_contains "$PROJECT_PATH/setup.py" "flask"; then
+        PROJECT_TYPE="flask"
+    else
+        PROJECT_TYPE="python"
+    fi
 elif [ -f "$PROJECT_PATH/Gemfile" ]; then
-    PROJECT_TYPE="ruby"
+    if file_contains "$PROJECT_PATH/Gemfile" "rails"; then
+        PROJECT_TYPE="rails"
+    else
+        PROJECT_TYPE="ruby"
+    fi
 elif [ -f "$PROJECT_PATH/go.mod" ]; then
     PROJECT_TYPE="go"
 elif [ -f "$PROJECT_PATH/Cargo.toml" ]; then
     PROJECT_TYPE="rust"
 elif [ -f "$PROJECT_PATH/mix.exs" ]; then
-    PROJECT_TYPE="elixir"
-elif [ -f "$PROJECT_PATH/build.gradle" ] || [ -f "$PROJECT_PATH/pom.xml" ]; then
-    PROJECT_TYPE="java"
+    if file_contains "$PROJECT_PATH/mix.exs" "phoenix"; then
+        PROJECT_TYPE="phoenix"
+    else
+        PROJECT_TYPE="elixir"
+    fi
+elif [ -f "$PROJECT_PATH/build.gradle" ] || [ -f "$PROJECT_PATH/build.gradle.kts" ] || [ -f "$PROJECT_PATH/pom.xml" ]; then
+    if file_contains "$PROJECT_PATH/build.gradle" "spring-boot" || file_contains "$PROJECT_PATH/build.gradle" "springframework" || file_contains "$PROJECT_PATH/build.gradle.kts" "spring-boot" || file_contains "$PROJECT_PATH/build.gradle.kts" "springframework" || file_contains "$PROJECT_PATH/pom.xml" "spring-boot" || file_contains "$PROJECT_PATH/pom.xml" "springframework"; then
+        PROJECT_TYPE="spring"
+    else
+        PROJECT_TYPE="java"
+    fi
+elif find "$PROJECT_PATH" -maxdepth 2 -name '*.csproj' -print -quit 2>/dev/null | grep -q .; then
+    PROJECT_TYPE="dotnet"
 fi
 
 info "Detected project type: $PROJECT_TYPE"
@@ -187,7 +232,7 @@ START_TIME=$(date +%s)
 # ── Header ─────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}████████████████████████████████████████████████████████████${RESET}"
-echo -e "${BOLD}   LaravelShield CLI — Security Scan                     ${RESET}"
+echo -e "${BOLD}   MySafeCoding CLI — Security Scan                      ${RESET}"
 echo -e "${BOLD}████████████████████████████████████████████████████████████${RESET}"
 echo ""
 echo "  Project:  $PROJECT_PATH"
@@ -277,44 +322,49 @@ echo ""
 # Build Semgrep config flags based on detected project type
 SEMGREP_CONFIGS=("--config" "p/secrets")
 case "$PROJECT_TYPE" in
-    laravel|php)
+    laravel|symfony|php)
         SEMGREP_CONFIGS+=("--config" "p/php")
-        info "Scanning: PHP source code, Blade templates..."
-        info "Rules: php.lang.security + generic.secrets"
+        info "Scanning: PHP source code and templates..."
+        info "Rules: PHP security + generic secrets"
         ;;
-    react|nextjs|node|vue|nuxt|svelte|angular)
+    react|nextjs|node|vue|nuxt|svelte|angular|nestjs|express)
         SEMGREP_CONFIGS+=("--config" "p/javascript" "--config" "p/typescript")
         info "Scanning: JavaScript/TypeScript source code..."
-        info "Rules: javascript + typescript + generic.secrets"
+        info "Rules: JavaScript + TypeScript + generic secrets"
         ;;
-    python)
+    django|flask|fastapi|python)
         SEMGREP_CONFIGS+=("--config" "p/python")
         info "Scanning: Python source code..."
-        info "Rules: python.lang.security + generic.secrets"
+        info "Rules: Python security + generic secrets"
         ;;
-    ruby)
+    rails|ruby)
         SEMGREP_CONFIGS+=("--config" "p/ruby")
         info "Scanning: Ruby source code..."
-        info "Rules: ruby.lang.security + generic.secrets"
+        info "Rules: Ruby security + generic secrets"
         ;;
     go)
         SEMGREP_CONFIGS+=("--config" "p/golang")
         info "Scanning: Go source code..."
-        info "Rules: golang.lang.security + generic.secrets"
+        info "Rules: Go security + generic secrets"
         ;;
     rust)
         SEMGREP_CONFIGS+=("--config" "p/rust")
         info "Scanning: Rust source code..."
         info "Rules: rust.lang.security + generic.secrets"
         ;;
-    elixir)
+    phoenix|elixir)
         info "Scanning: Elixir source code..."
         info "Rules: generic.secrets (no official Elixir ruleset)"
         ;;
-    java)
+    spring|java)
         SEMGREP_CONFIGS+=("--config" "p/java")
         info "Scanning: Java source code..."
-        info "Rules: java.lang.security + generic.secrets"
+        info "Rules: Java security + generic secrets"
+        ;;
+    dotnet)
+        SEMGREP_CONFIGS+=("--config" "p/csharp")
+        info "Scanning: .NET/C# source code..."
+        info "Rules: C# security + generic secrets"
         ;;
     *)
         info "Scanning: source code (generic rules)..."
@@ -439,9 +489,9 @@ echo ""
 # Build quality-specific Semgrep configs per project type
 QUALITY_CONFIGS=()
 case "$PROJECT_TYPE" in
-    laravel|php)
+    laravel|symfony|php)
         QUALITY_CONFIGS+=("--config" "p/phpcs-security-audit" "--config" "p/php")
-        info "Quality rules: PHP best practices, PSR standards, Laravel patterns"
+        info "Quality rules: PHP best practices, PSR standards, framework patterns"
         ;;
     react)
         QUALITY_CONFIGS+=("--config" "p/react-best-practices" "--config" "p/eslint-plugin-react" "--config" "p/typescript")
@@ -455,15 +505,15 @@ case "$PROJECT_TYPE" in
         QUALITY_CONFIGS+=("--config" "p/javascript" "--config" "p/typescript")
         info "Quality rules: Vue/Nuxt JavaScript & TypeScript best practices"
         ;;
-    node)
+    node|express|nestjs)
         QUALITY_CONFIGS+=("--config" "p/nodejs" "--config" "p/typescript")
         info "Quality rules: Node.js best practices, async patterns, TypeScript"
         ;;
-    python)
+    django|flask|fastapi|python)
         QUALITY_CONFIGS+=("--config" "p/python" "--config" "p/bandit" "--config" "p/flask" "--config" "p/django")
-        info "Quality rules: Python best practices, PEP standards, framework patterns"
+        info "Quality rules: Python best practices, security checks, framework patterns"
         ;;
-    ruby)
+    rails|ruby)
         QUALITY_CONFIGS+=("--config" "p/ruby" "--config" "p/rails")
         info "Quality rules: Ruby best practices, Rails patterns"
         ;;
@@ -475,11 +525,15 @@ case "$PROJECT_TYPE" in
         QUALITY_CONFIGS+=("--config" "p/rust")
         info "Quality rules: Rust best practices, clippy-like patterns"
         ;;
-    java)
+    spring|java)
         QUALITY_CONFIGS+=("--config" "p/java" "--config" "p/spring")
         info "Quality rules: Java best practices, Spring patterns"
         ;;
-    elixir)
+    dotnet)
+        QUALITY_CONFIGS+=("--config" "p/csharp")
+        info "Quality rules: .NET/C# best practices"
+        ;;
+    phoenix|elixir)
         info "Skipping code quality (no Semgrep ruleset for Elixir)"
         ;;
     *)
@@ -609,9 +663,10 @@ fi
 
 # ── Write summary file ─────────────────────────────────────────────────────
 cat > "$SUMMARY_OUT" << EOF
-LaravelShield CLI Scan Summary
+MySafeCoding CLI Scan Summary
 ====================================
 Project:    $PROJECT_PATH
+Type:       $PROJECT_TYPE
 Scanned:    $(date '+%Y-%m-%d %H:%M:%S')
 Duration:   ${DURATION}s
 Excluded:   ${ALL_EXCLUDES[*]:-none}
@@ -648,8 +703,8 @@ NEXT STEPS
 ----------
 1. Review CRITICAL and HIGH findings first
 2. For each finding, decide: real issue or false positive?
-3. Note any Laravel-specific patterns Semgrep missed
-   (these become custom LaravelShield rules)
+3. Note any framework-specific patterns Semgrep missed
+   (these can become custom MySafeCoding hosted rules)
 4. Run: cat $OUTPUT_DIR/trivy-raw.json | jq '.Results[].Vulnerabilities[]? | {id:.VulnerabilityID, pkg:.PkgName, severity:.Severity, fix:.FixedVersion}'
 EOF
 
@@ -670,5 +725,5 @@ echo ""
 echo -e "  ${CYAN}# Count findings by severity (Trivy):${RESET}"
 echo "  cat $TRIVY_OUT | jq '[.Results[]?.Vulnerabilities[]?.Severity] | group_by(.) | map({(.[0]): length}) | add'"
 echo ""
-echo -e "${GREEN}${BOLD}LaravelShield CLI scan complete. Review your results above.${RESET}"
+echo -e "${GREEN}${BOLD}MySafeCoding CLI scan complete. Review your results above.${RESET}"
 echo ""

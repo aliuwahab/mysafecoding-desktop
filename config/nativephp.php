@@ -13,7 +13,7 @@ return [
      * usually in the form of a reverse domain name.
      * For example: com.nativephp.app
      */
-    'app_id' => env('NATIVEPHP_APP_ID', 'com.laraguard.app'),
+    'app_id' => env('NATIVEPHP_APP_ID', 'com.mysafecoding.desktop'),
 
     /**
      * If your application allows deep linking, you can specify the scheme
@@ -39,12 +39,12 @@ return [
     /**
      * The description of your application.
      */
-    'description' => env('NATIVEPHP_APP_DESCRIPTION', 'Security scanner for Laravel applications'),
+    'description' => env('NATIVEPHP_APP_DESCRIPTION', 'Local security scanner for popular languages and frameworks'),
 
     /**
      * The Website of your application.
      */
-    'website' => env('NATIVEPHP_APP_WEBSITE', 'https://laravelguard.com'),
+    'website' => env('NATIVEPHP_APP_WEBSITE', 'https://www.mysafecoding.com'),
 
     /**
      * The default service provider for your application. This provider

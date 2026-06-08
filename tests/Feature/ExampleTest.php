@@ -16,7 +16,7 @@ class ExampleTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('LaraGuard')
+            ->assertSee('MySafeCoding')
             ->assertSee('Select Folder');
     }
 
@@ -42,7 +42,7 @@ class ExampleTest extends TestCase
         $response
             ->assertOk()
             ->assertSee(basename($scan->project_path))
-            ->assertSee('Total Findings')
+            ->assertSee('total findings')
             ->assertSee('3');
     }
 }

@@ -44,7 +44,7 @@ class ScannerService
 
         $cmd = [
             'bash',
-            resource_path('cli/laravelshield-scan.sh'),
+            resource_path('cli/mysafecoding-scan.sh'),
             $scan->project_path,
             '--output-dir',
             $outputPath,
@@ -115,9 +115,9 @@ class ScannerService
             $projectType = static::detectProjectType($scan);
             $results['project_type'] = $projectType;
 
-            // Run Laravel-specific rule engine only for Laravel projects
+            // Run the framework rule pack when the detected type is Laravel.
             if ($projectType === 'laravel') {
-                static::createLog($scanId, 'Running Laravel-specific rule analysis...', 'laravel_rules');
+                static::createLog($scanId, 'Running framework rule analysis for Laravel...', 'laravel_rules');
                 $engine = new LaravelRuleEngine;
                 $laravelResults = $engine->analyze($scan->project_path);
                 $results['laravel_rules'] = $laravelResults;
@@ -125,9 +125,9 @@ class ScannerService
                 $results['summary']['laravel_rules_total'] = $laravelResults['summary']['total'];
 
                 if ($laravelResults['summary']['total'] > 0) {
-                    static::createLog($scanId, "Laravel Rule Engine found {$laravelResults['summary']['total']} issues ({$laravelResults['summary']['CRITICAL']} critical, {$laravelResults['summary']['HIGH']} high, {$laravelResults['summary']['MEDIUM']} medium).", 'laravel_rules');
+                    static::createLog($scanId, "Framework rule analysis found {$laravelResults['summary']['total']} issues ({$laravelResults['summary']['CRITICAL']} critical, {$laravelResults['summary']['HIGH']} high, {$laravelResults['summary']['MEDIUM']} medium).", 'laravel_rules');
                 } else {
-                    static::createLog($scanId, 'Laravel Rule Engine: no issues found.', 'laravel_rules');
+                    static::createLog($scanId, 'Framework rule analysis: no issues found.', 'laravel_rules');
                 }
             }
 
@@ -170,7 +170,7 @@ class ScannerService
             // Send native notification
             if ($event->code === 0) {
                 try {
-                    \Native\Desktop\Facades\Notification::title('LaraGuard Scan Complete')
+                    \Native\Desktop\Facades\Notification::title('MySafeCoding Scan Complete')
                         ->message($findingsCount > 0 ? "{$findingsCount} security findings detected in ".basename($scan->project_path) : 'No issues found in '.basename($scan->project_path))
                         ->show();
                 } catch (\Throwable $e) {
@@ -261,7 +261,7 @@ class ScannerService
         if (str_contains($lower, 'gitleaks') || str_contains($lower, 'secret')) {
             return 'gitleaks';
         }
-        if (str_contains($lower, 'laravel rule') || str_contains($lower, 'laravel-specific')) {
+        if (str_contains($lower, 'framework rule') || str_contains($lower, 'laravel rule') || str_contains($lower, 'laravel-specific')) {
             return 'laravel_rules';
         }
         if (str_contains($lower, 'code quality') || str_contains($lower, 'best practice')) {
@@ -379,32 +379,152 @@ class ScannerService
 
         // Fallback detection
         $path = rtrim($scan->project_path, '/');
-        if (file_exists($path.'/artisan') && file_exists($path.'/composer.json')) {
-            return 'laravel';
-        }
         if (file_exists($path.'/composer.json')) {
+            if (file_exists($path.'/artisan') || static::composerHasPackage($path, 'laravel/framework')) {
+                return 'laravel';
+            }
+            if (static::composerHasPackage($path, 'symfony/framework-bundle')) {
+                return 'symfony';
+            }
+
             return 'php';
         }
         if (file_exists($path.'/package.json')) {
+            foreach ([
+                'nextjs' => ['next'],
+                'nuxt' => ['nuxt'],
+                'angular' => ['@angular/core', 'angular'],
+                'svelte' => ['svelte'],
+                'vue' => ['vue'],
+                'react' => ['react'],
+                'nestjs' => ['@nestjs/core'],
+                'express' => ['express'],
+            ] as $type => $packages) {
+                foreach ($packages as $package) {
+                    if (static::packageJsonHasPackage($path, $package)) {
+                        return $type;
+                    }
+                }
+            }
+
             return 'node';
         }
-        if (file_exists($path.'/requirements.txt') || file_exists($path.'/pyproject.toml')) {
+        if (file_exists($path.'/requirements.txt') || file_exists($path.'/pyproject.toml') || file_exists($path.'/setup.py')) {
+            if (static::pythonProjectMentions($path, 'django')) {
+                return 'django';
+            }
+            if (static::pythonProjectMentions($path, 'fastapi')) {
+                return 'fastapi';
+            }
+            if (static::pythonProjectMentions($path, 'flask')) {
+                return 'flask';
+            }
+
             return 'python';
+        }
+        if (file_exists($path.'/Gemfile')) {
+            return static::fileContains($path.'/Gemfile', 'rails') ? 'rails' : 'ruby';
         }
         if (file_exists($path.'/go.mod')) {
             return 'go';
         }
+        if (file_exists($path.'/Cargo.toml')) {
+            return 'rust';
+        }
         if (file_exists($path.'/mix.exs')) {
-            return 'elixir';
+            return static::fileContains($path.'/mix.exs', 'phoenix') ? 'phoenix' : 'elixir';
+        }
+        if (file_exists($path.'/build.gradle') || file_exists($path.'/build.gradle.kts') || file_exists($path.'/pom.xml')) {
+            return static::javaProjectMentionsSpring($path) ? 'spring' : 'java';
+        }
+        if (static::hasFileMatching($path, '*.csproj')) {
+            return 'dotnet';
         }
 
         return 'unknown';
     }
 
+    protected static function composerHasPackage(string $path, string $package): bool
+    {
+        $composer = static::readJsonFile($path.'/composer.json');
+
+        return isset($composer['require'][$package]) || isset($composer['require-dev'][$package]);
+    }
+
+    protected static function packageJsonHasPackage(string $path, string $package): bool
+    {
+        $packageJson = static::readJsonFile($path.'/package.json');
+
+        foreach (['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as $section) {
+            if (isset($packageJson[$section][$package])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected static function pythonProjectMentions(string $path, string $package): bool
+    {
+        foreach (['requirements.txt', 'pyproject.toml', 'setup.py'] as $file) {
+            if (static::fileContains($path.'/'.$file, $package)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected static function javaProjectMentionsSpring(string $path): bool
+    {
+        foreach (['build.gradle', 'build.gradle.kts', 'pom.xml'] as $file) {
+            if (static::fileContains($path.'/'.$file, 'spring-boot') || static::fileContains($path.'/'.$file, 'springframework')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected static function fileContains(string $file, string $needle): bool
+    {
+        return file_exists($file) && str_contains(strtolower(file_get_contents($file) ?: ''), strtolower($needle));
+    }
+
+    protected static function readJsonFile(string $file): array
+    {
+        if (! file_exists($file)) {
+            return [];
+        }
+
+        $json = json_decode(file_get_contents($file) ?: '', true);
+
+        return is_array($json) ? $json : [];
+    }
+
+    protected static function hasFileMatching(string $path, string $pattern): bool
+    {
+        if (! is_dir($path)) {
+            return false;
+        }
+
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($files as $file) {
+            if ($file->isFile() && fnmatch($pattern, $file->getFilename())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static function installDependencies(): void
     {
         ChildProcess::start(
-            cmd: ['bash', resource_path('cli/laravelshield-setup.sh')],
+            cmd: ['bash', resource_path('cli/mysafecoding-setup.sh')],
             alias: 'setup',
             cwd: resource_path('cli'),
             env: static::processEnvironment(),

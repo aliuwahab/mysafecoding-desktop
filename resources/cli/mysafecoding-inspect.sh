@@ -1,10 +1,10 @@
 #!/bin/bash
 # =============================================================================
-# LaravelShield — Deep-dive inspector for scan output
-# Use AFTER running laravelshield-scan.sh
+# MySafeCoding — Deep-dive inspector for scan output
+# Use AFTER running mysafecoding-scan.sh
 #
 # Usage:
-#   ./laravelshield-inspect.sh ./ls-output/YYYYMMDD_HHMMSS
+#   ./mysafecoding-inspect.sh ./ls-output/YYYYMMDD_HHMMSS
 # =============================================================================
 
 set -e
@@ -14,7 +14,7 @@ if [ -z "$1" ]; then
     # Auto-find most recent scan
     SCAN_DIR=$(ls -dt ./ls-output/*/ 2>/dev/null | head -1)
     if [ -z "$SCAN_DIR" ]; then
-        echo "Usage: ./laravelshield-inspect.sh ./ls-output/YYYYMMDD_HHMMSS"
+        echo "Usage: ./mysafecoding-inspect.sh ./ls-output/YYYYMMDD_HHMMSS"
         exit 1
     fi
     echo -e "${CYAN}Using most recent scan: $SCAN_DIR${RESET}"
@@ -27,7 +27,7 @@ SEMGREP="$SCAN_DIR/semgrep-raw.json"
 GITLEAKS="$SCAN_DIR/gitleaks-raw.json"
 
 echo ""
-echo -e "${BOLD}LaravelShield CLI — Inspector — $SCAN_DIR${RESET}"
+echo -e "${BOLD}MySafeCoding CLI — Inspector — $SCAN_DIR${RESET}"
 echo ""
 
 # ── Menu ───────────────────────────────────────────────────────────────────
