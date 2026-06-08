@@ -157,9 +157,18 @@ If you add migrations for app state used in the desktop app, they must be availa
 - Trivy / Semgrep / Gitleaks result tabs
 - Framework Rules tab when a framework-specific rule pack is available
 - .env Audit and Code Quality tabs
-- JSON export
+- JSON and SARIF export
+- GitHub Actions workflow generator
 - first-run dependency check screen
 - hosted scan CTA that opens https://www.mysafecoding.com/
+
+## CI Workflow
+
+Use the `CI YAML` button in the desktop app to generate a GitHub Actions workflow for the selected project. The generated workflow installs Trivy, Semgrep, Gitleaks, and jq, downloads the MySafeCoding scanner script, runs the scan in CI, and uploads raw scan artifacts.
+
+## SARIF Export
+
+Use the `SARIF` button after a scan completes to export results in SARIF 2.1.0 format for tools that support standardized security findings.
 
 ## Notes
 

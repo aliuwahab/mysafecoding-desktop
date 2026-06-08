@@ -21,10 +21,12 @@ MySafeCoding Desktop is the fast, local-first security scanner developers can us
 - [x] Real-time log streaming
 - [x] Scan history sidebar (last 20 scans)
 - [x] Summary, Trivy, Semgrep, Gitleaks, Framework Rules, .env Audit, and Code Quality tabs
-- [x] JSON export
+- [x] JSON and SARIF export
+- [x] GitHub Actions workflow generator
 - [x] First-run dependency installer (Homebrew)
 - [x] Exclusion list management
 - [x] Hosted Scan CTA to mysafecoding.com
+- [x] Open-source contributor and security reporting docs
 
 ---
 
@@ -58,7 +60,7 @@ MySafeCoding Desktop is the fast, local-first security scanner developers can us
 - [ ] **Auto-Fix for Common Issues** — One-click fixes for debug mode, missing fillable, raw Blade output, weak .env values.
 - [ ] **Remediation Guides** — Inline before/after code examples for each finding type, tailored to each supported framework.
 - [ ] **Baseline/Ignore Management** — Mark findings as "accepted risk" so they don't clutter future scans.
-- [ ] **CI Config Generator** — Export a GitHub Actions or GitLab CI YAML that runs the same scans in CI.
+- [x] **CI Config Generator** — Export a GitHub Actions YAML that runs the same scans in CI.
 
 ### v1.5 — Ecosystem
 - [ ] **Plugin System** — Community-contributed rule packs (Livewire-specific, Inertia-specific, Filament-specific).

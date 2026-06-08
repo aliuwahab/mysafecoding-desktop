@@ -5,6 +5,8 @@ namespace App\Livewire;
 use App\Models\IgnoredFinding;
 use App\Models\Scan;
 use App\Models\ScanLog;
+use App\Services\GitHubActionsWorkflowGenerator;
+use App\Services\SarifExporter;
 use App\Services\ScannerService;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
@@ -317,6 +319,34 @@ class Scanner extends Component
 
         if ($path) {
             file_put_contents($path, json_encode($this->results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
+    }
+
+    public function exportSarif(): void
+    {
+        if (! $this->results) {
+            return;
+        }
+
+        $path = Dialog::new()
+            ->title('Save SARIF Report')
+            ->defaultPath('mysafecoding-report.sarif')
+            ->save();
+
+        if ($path) {
+            file_put_contents($path, json_encode(SarifExporter::fromResults($this->results), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        }
+    }
+
+    public function exportGithubActionsWorkflow(): void
+    {
+        $path = Dialog::new()
+            ->title('Save GitHub Actions Workflow')
+            ->defaultPath('mysafecoding.yml')
+            ->save();
+
+        if ($path) {
+            file_put_contents($path, GitHubActionsWorkflowGenerator::generate($this->exclusions));
         }
     }
 

@@ -58,6 +58,12 @@
             @endif
         </div>
         <div style="width:1px;height:16px;background:var(--line-1);"></div>
+        <button wire:click="exportSarif" title="Export SARIF" style="color:var(--fg-3);padding:4px;display:flex;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+        </button>
+        <button wire:click="exportGithubActionsWorkflow" title="Generate GitHub Actions workflow" style="color:var(--fg-3);padding:4px;display:flex;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M8.5 8.5 15.5 15.5"/><path d="M6 9v6a3 3 0 0 0 3 3h6"/></svg>
+        </button>
         <button wire:click="exportJson" title="Export JSON" style="color:var(--fg-3);padding:4px;display:flex;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         </button>
@@ -282,9 +288,17 @@
         </button>
     @endforeach
     <div style="flex:1;"></div>
-    <button wire:click="exportJson" style="display:flex;align-items:center;gap:6px;padding:6px 12px;margin:6px 12px 6px 0;font-size:11.5px;color:var(--fg-2);background:var(--bg-2);border:1px solid var(--line-1);border-radius:6px;">
+    <button wire:click="exportGithubActionsWorkflow" style="display:flex;align-items:center;gap:6px;padding:6px 10px;margin:6px 6px 6px 0;font-size:11.5px;color:var(--fg-2);background:var(--bg-2);border:1px solid var(--line-1);border-radius:6px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M8.5 8.5 15.5 15.5"/><path d="M6 9v6a3 3 0 0 0 3 3h6"/></svg>
+        CI YAML
+    </button>
+    <button wire:click="exportSarif" @disabled(!$results) style="display:flex;align-items:center;gap:6px;padding:6px 10px;margin:6px 6px 6px 0;font-size:11.5px;color:var(--fg-2);background:var(--bg-2);border:1px solid var(--line-1);border-radius:6px;opacity:{{ $results ? '1' : '0.45' }};">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+        SARIF
+    </button>
+    <button wire:click="exportJson" @disabled(!$results) style="display:flex;align-items:center;gap:6px;padding:6px 12px;margin:6px 12px 6px 0;font-size:11.5px;color:var(--fg-2);background:var(--bg-2);border:1px solid var(--line-1);border-radius:6px;opacity:{{ $results ? '1' : '0.45' }};">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-        Export JSON
+        JSON
     </button>
 </div>
 
