@@ -58,6 +58,22 @@ class ScannerScreensTest extends TestCase
         }
     }
 
+    public function test_gitignored_skips_and_local_env_are_explained(): void
+    {
+        $results = $this->results();
+        $results['gitignored'] = ['skipped_findings' => 2, 'files' => ['.env', 'config/local-secrets.json'], 'env_local_only' => true];
+        $results['env_audit']['local_only'] = true;
+        Scan::create(['project_path' => '/tmp/example-app', 'status' => 'completed', 'results' => $results]);
+
+        Livewire::test(Scanner::class)
+            ->set('activeTab', 'gitleaks')
+            ->assertSee('Skipped 2 findings')
+            ->assertSee('config/local-secrets.json')
+            ->set('activeTab', 'env_audit')
+            ->assertSee('settings and they don')
+            ->assertSee('affect the grade');
+    }
+
     public function test_rule_findings_can_be_ignored(): void
     {
         $results = $this->results();

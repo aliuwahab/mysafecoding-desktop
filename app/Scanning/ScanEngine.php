@@ -169,7 +169,7 @@ class ScanEngine
         }
 
         $results = $this->runRulePacks($results, $projectType);
-        $results = $this->runEnvAudit($results);
+        $results = $this->runEnvAudit($results, $projectType);
 
         if ($this->options['lifecycle']) {
             $results = $this->runLifecycle($results);
@@ -178,6 +178,8 @@ class ScanEngine
         if (! in_array('semgrep', $missing, true)) {
             $results = $this->runCodeQuality($results, $projectType);
         }
+
+        $results = $this->skipGitIgnoredFiles($results);
 
         if ($this->options['redact_secrets']) {
             $results = static::redactSecrets($results);
@@ -514,9 +516,10 @@ class ScanEngine
         return $results;
     }
 
-    protected function runEnvAudit(array $results): array
+    protected function runEnvAudit(array $results, string $projectType): array
     {
-        if (! file_exists($this->projectPath.'/.env')) {
+        // The audit checks Laravel settings (APP_KEY, APP_DEBUG, SESSION_DRIVER, ...).
+        if ($projectType !== 'laravel' || ! file_exists($this->projectPath.'/.env')) {
             return $results;
         }
 
@@ -540,6 +543,146 @@ class ScanEngine
         $this->log("Lifecycle: {$lifecycle['summary']['components']} components checked, {$lifecycle['summary']['total']} support issues.", 'endoflife');
 
         return $results;
+    }
+
+    // ── Gitignored files ─────────────────────────────────────────────────────
+
+    /**
+     * A secret in a file that git ignores (and that was never committed) has
+     * not leaked: it lives only on the developer's machine. Skip those secret
+     * findings, and treat a gitignored .env as local settings that do not
+     * count toward the grade. Secrets found in git history are always kept.
+     */
+    protected function skipGitIgnoredFiles(array $results): array
+    {
+        $candidates = [];
+        $historyMode = (bool) ($results['meta']['git_history'] ?? false);
+
+        foreach ($results['gitleaks'] ?? [] as $leak) {
+            if (! $historyMode) {
+                $candidates[] = $leak['File'] ?? '';
+            }
+        }
+        foreach (['laravel_rules', 'custom_rules'] as $pack) {
+            foreach ($results[$pack]['findings'] ?? [] as $finding) {
+                $candidates[] = $finding['file_path'] ?? '';
+            }
+        }
+        foreach ($results['semgrep']['results'] ?? [] as $finding) {
+            $candidates[] = $finding['path'] ?? '';
+        }
+        if (! empty($results['env_audit'])) {
+            $candidates[] = '.env';
+        }
+
+        $ignored = array_flip(GitIgnore::ignoredPaths($this->projectPath, $candidates));
+        if ($ignored === []) {
+            return $results;
+        }
+
+        $isIgnored = static fn (?string $path): bool => isset($ignored[ltrim(preg_replace('#^\./#', '', (string) $path) ?? '', '/')]);
+        $isEnvFile = static fn (?string $path): bool => str_starts_with(basename((string) $path), '.env');
+        $isSecretRule = static fn (string $id, string $category = ''): bool => $category === 'secret'
+            || (bool) preg_match('/secret|credential|password|api[-_]?key|token/i', $id);
+        $skipped = [];
+
+        if (! $historyMode && isset($results['gitleaks'])) {
+            $results['gitleaks'] = array_values(array_filter($results['gitleaks'], function (array $leak) use ($isIgnored, &$skipped): bool {
+                if ($isIgnored($leak['File'] ?? '')) {
+                    $skipped[] = ['file' => $leak['File'], 'rule' => $leak['RuleID'] ?? 'secret', 'engine' => 'gitleaks'];
+
+                    return false;
+                }
+
+                return true;
+            }));
+            $results['summary']['gitleaks_total'] = count($results['gitleaks']);
+        }
+
+        foreach (['laravel_rules', 'custom_rules'] as $pack) {
+            if (empty($results[$pack]['findings'])) {
+                continue;
+            }
+            $results[$pack]['findings'] = array_values(array_filter($results[$pack]['findings'], function (array $finding) use ($isIgnored, $isEnvFile, $isSecretRule, $pack, &$skipped): bool {
+                $file = $finding['file_path'] ?? '';
+                // A .env inside public/ is downloadable from the web server whatever git thinks.
+                if (($finding['rule_id'] ?? '') === 'laravel.env.exposed') {
+                    return true;
+                }
+                // Secrets in ignored files, and settings read from an ignored .env (e.g. APP_DEBUG=true locally).
+                if ($isIgnored($file) && ($isEnvFile($file) || $isSecretRule($finding['rule_id'] ?? '', $finding['category'] ?? ''))) {
+                    $skipped[] = ['file' => $file, 'rule' => $finding['rule_id'] ?? 'rule', 'engine' => $pack];
+
+                    return false;
+                }
+
+                return true;
+            }));
+            $results[$pack]['summary'] = static::severitySummary($results[$pack]['findings'], $results[$pack]['summary'] ?? []);
+            $results['summary'][$pack] = $results[$pack]['summary'];
+            $results['summary'][$pack.'_total'] = $results[$pack]['summary']['total'];
+        }
+
+        if (! empty($results['semgrep']['results'])) {
+            $results['semgrep']['results'] = array_values(array_filter($results['semgrep']['results'], function (array $finding) use ($isIgnored, $isSecretRule, &$skipped): bool {
+                if ($isIgnored($finding['path'] ?? '') && $isSecretRule($finding['check_id'] ?? '')) {
+                    $skipped[] = ['file' => $finding['path'], 'rule' => $finding['check_id'], 'engine' => 'semgrep'];
+
+                    return false;
+                }
+
+                return true;
+            }));
+            $counts = $this->semgrepCounts($results['semgrep']);
+            $results['summary']['semgrep'] = $counts;
+            $results['summary']['semgrep_total'] = array_sum($counts);
+        }
+
+        // A gitignored .env holds local settings: show them, but do not grade them.
+        if (! empty($results['env_audit']) && $isIgnored('.env')) {
+            $results['env_audit']['local_only'] = true;
+            unset($results['summary']['env_audit']);
+            $results['summary']['env_audit_total'] = 0;
+        }
+
+        $files = array_values(array_unique(array_column($skipped, 'file')));
+        $results['gitignored'] = [
+            'skipped_findings' => count($skipped),
+            'files' => $files,
+            'env_local_only' => (bool) ($results['env_audit']['local_only'] ?? false),
+        ];
+
+        if ($skipped !== []) {
+            $this->log(sprintf(
+                'Skipped %d findings in gitignored files that were never committed (%s): they never reach your repository.',
+                count($skipped),
+                implode(', ', array_slice($files, 0, 5)).(count($files) > 5 ? ', …' : ''),
+            ));
+        }
+        if ($results['gitignored']['env_local_only']) {
+            $this->log('.env is gitignored: its settings are shown as local configuration and not graded.', 'env_audit');
+        }
+
+        return $results;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $findings
+     */
+    protected static function severitySummary(array $findings, array $previous): array
+    {
+        $summary = ['total' => count($findings)];
+        foreach (array_keys($previous) as $key) {
+            if ($key !== 'total' && is_int($previous[$key])) {
+                $summary[$key] = 0;
+            }
+        }
+        foreach ($findings as $finding) {
+            $severity = $finding['severity'] ?? 'MEDIUM';
+            $summary[$severity] = ($summary[$severity] ?? 0) + 1;
+        }
+
+        return $summary;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

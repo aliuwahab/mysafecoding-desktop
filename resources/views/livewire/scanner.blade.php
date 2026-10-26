@@ -764,6 +764,7 @@
         <span style="font-size:11.5px;color:var(--fg-3);">Gitleaks · {{ ($results['meta']['git_history'] ?? true) ? 'files + full git history' : 'current files' }}</span>
     </div>
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
+        @include('livewire.partials.gitignored-note')
         @forelse ($results['gitleaks'] ?? [] as $secret)
           @php
             $gfp = ($secret['RuleID']??'').':'.($secret['File']??'').':'.($secret['StartLine']??'');
@@ -812,6 +813,7 @@
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
     @include('livewire.partials.tab-header', ['title' => 'Rule findings', 'count' => $rulesTotal, 'subtitle' => ($isLaravelProject ? 'Laravel rule pack + ' : '').'CheckMyCode custom rules · '.\App\Scanning\ProjectDetector::label($scanProjectType ?? 'unknown')])
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+        @include('livewire.partials.gitignored-note')
         @forelse ($ruleFindings as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => $finding['_scanner'], 'icon' => '<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>'])
         @empty
@@ -900,6 +902,11 @@
         <span style="font-size:11.5px;color:var(--fg-3);">.env · variables checked</span>
     </div>
     <div style="padding:16px 32px 32px;">
+      @if (!empty($results['env_audit']['local_only']))
+        <div style="padding:12px 16px;margin-bottom:12px;background:color-mix(in srgb,var(--sev-low) 8%,transparent);border:1px solid color-mix(in srgb,var(--sev-low) 22%,transparent);border-radius:8px;font-size:12px;color:var(--fg-2);line-height:1.5;">
+          Your <span class="mono">.env</span> is gitignored, so these are your <strong style="color:var(--fg-1);">local</strong> settings and they don't affect the grade. Make sure your production environment doesn't use them (for example <span class="mono">APP_DEBUG=true</span>).
+        </div>
+      @endif
       @if (!empty($results['env_audit']['findings']))
         <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
           <div style="display:grid;grid-template-columns:22px 200px 1fr 180px;padding:10px 16px;border-bottom:1px solid var(--line-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);background:var(--bg-1);">
