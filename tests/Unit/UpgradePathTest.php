@@ -27,4 +27,12 @@ class UpgradePathTest extends TestCase
             $this->assertSame(['type' => $type, 'target' => $target], UpgradePath::classify($installed, $fixed), "{$installed} -> {$fixed}");
         }
     }
+
+    public function test_higher_picks_the_version_that_fixes_everything(): void
+    {
+        $this->assertSame('4.18.0', UpgradePath::higher('4.17.21', '4.18.0'));
+        $this->assertSame('4.17.21', UpgradePath::higher('4.17.21', '4.17.19'));
+        $this->assertSame('1.0.0', UpgradePath::higher('1.0.0-rc1', '1.0.0'));
+        $this->assertSame('2.0.0', UpgradePath::higher(null, '2.0.0'));
+    }
 }

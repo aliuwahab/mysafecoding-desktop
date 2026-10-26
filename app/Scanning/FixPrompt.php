@@ -25,7 +25,7 @@ class FixPrompt
         }
 
         [$category, $guidance] = static::guidance($tab);
-        $total = count($items);
+        $total = $tab === 'trivy' ? array_sum(array_map(fn ($line) => (int) (preg_match('/: (\d+) advisor/', is_array($line) ? $line['text'] : $line, $m) ? $m[1] : 1), $items)) : count($items);
         $issueLines = static::issueLines($items);
         $shown = array_slice($issueLines, 0, self::MAX_ITEMS);
         $more = count(array_filter($issueLines, fn (string $line): bool => str_starts_with($line, '- '))) - count(array_filter($shown, fn (string $line): bool => str_starts_with($line, '- ')));
@@ -79,8 +79,8 @@ class FixPrompt
 
         $sections = [
             'safe' => '### Safe upgrades (patch or minor): apply these',
-            'major' => '### Major upgrade required: do not apply, list under "Needs review" with the breaking changes',
-            'none' => '### No fixed version published yet: report only',
+            'major' => '### Major upgrade required: do not apply. List under "Needs review" with the breaking changes and the real exposure',
+            'none' => '### No fixed version published yet: report only, with the real exposure',
         ];
         $lines = [];
         foreach ($sections as $group => $heading) {
@@ -109,35 +109,71 @@ class FixPrompt
 
         switch ($tab) {
             case 'trivy':
+                // One decision per package: all of its advisories and the single upgrade that fixes them.
+                $packages = [];
                 foreach ($results['trivy']['Results'] ?? [] as $target) {
                     foreach ($target['Vulnerabilities'] ?? [] as $vuln) {
                         if ($isIgnored('trivy', ($vuln['VulnerabilityID'] ?? '').':'.($vuln['PkgName'] ?? ''))) {
                             continue;
                         }
-                        $path = UpgradePath::classify($vuln['InstalledVersion'] ?? null, $vuln['FixedVersion'] ?? null);
-                        $items[] = [
-                            'group' => match ($path['type']) {
-                                'patch', 'minor' => 'safe',
-                                'major', 'unknown' => 'major',
-                                default => 'none',
-                            },
-                            'text' => sprintf(
-                                '- [%s] `%s` %s in `%s`%s: %s (%s). %s',
-                                $vuln['Severity'] ?? 'UNKNOWN',
-                                $vuln['PkgName'] ?? '?',
-                                $vuln['InstalledVersion'] ?? '?',
-                                $target['Target'] ?? 'lockfile',
-                                ! empty($vuln['DevDependency']) ? ' (dev dependency)' : '',
-                                $vuln['VulnerabilityID'] ?? '',
-                                $clip($vuln['Title'] ?? '', 140),
-                                match ($path['type']) {
-                                    'none' => 'No fixed version published yet.',
-                                    'unknown' => 'Fixed in: '.$vuln['FixedVersion'].' (could not compare versions; check whether this is a breaking upgrade).',
-                                    default => "Upgrade to {$path['target']} ({$path['type']} upgrade).",
-                                },
-                            ),
+                        $key = ($target['Target'] ?? 'lockfile').'|'.($vuln['PkgName'] ?? '?').'|'.($vuln['InstalledVersion'] ?? '?');
+                        $package = $packages[$key] ??= [
+                            'name' => $vuln['PkgName'] ?? '?',
+                            'installed' => $vuln['InstalledVersion'] ?? '?',
+                            'lockfile' => $target['Target'] ?? 'lockfile',
+                            'dev' => ! empty($vuln['DevDependency']),
+                            'advisories' => [],
+                            'severities' => [],
+                            'fixTo' => null,
+                            'unfixed' => 0,
                         ];
+                        $path = UpgradePath::classify($vuln['InstalledVersion'] ?? null, $vuln['FixedVersion'] ?? null);
+                        $package['advisories'][] = ($vuln['VulnerabilityID'] ?? '?').' ('.$clip($vuln['Title'] ?? '', 90).')';
+                        $package['severities'][] = $vuln['Severity'] ?? 'UNKNOWN';
+                        if ($path['target'] !== null) {
+                            $package['fixTo'] = UpgradePath::higher($package['fixTo'], $path['target']);
+                        } else {
+                            $package['unfixed']++;
+                        }
+                        $packages[$key] = $package;
                     }
+                }
+
+                $rank = ['CRITICAL' => 0, 'HIGH' => 1, 'MEDIUM' => 2, 'LOW' => 3, 'UNKNOWN' => 4];
+                uasort($packages, fn (array $a, array $b): int => min(array_map(fn ($s) => $rank[$s] ?? 9, $a['severities'])) <=> min(array_map(fn ($s) => $rank[$s] ?? 9, $b['severities'])));
+
+                foreach ($packages as $package) {
+                    $type = $package['fixTo'] !== null ? UpgradePath::classify($package['installed'], $package['fixTo'])['type'] : 'none';
+                    $counts = array_count_values($package['severities']);
+                    uksort($counts, fn ($a, $b) => ($rank[$a] ?? 9) <=> ($rank[$b] ?? 9));
+                    $severityList = implode(', ', array_map(fn ($s, $n) => "{$s} ×{$n}", array_keys($counts), $counts));
+                    $advisories = count($package['advisories']);
+
+                    $fix = match (true) {
+                        $type === 'none' => 'No fixed version published yet.',
+                        $type === 'unknown' => "Fixed in {$package['fixTo']} (could not compare versions; check whether this is a breaking upgrade).",
+                        default => "Upgrading to {$package['fixTo']} ({$type} upgrade) fixes ".($package['unfixed'] > 0 ? ($advisories - $package['unfixed']).' of them; '.$package['unfixed'].' have no fix yet.' : ($advisories > 1 ? 'all of them.' : 'it.')),
+                    };
+
+                    $items[] = [
+                        'group' => match ($type) {
+                            'patch', 'minor' => 'safe',
+                            'major', 'unknown' => 'major',
+                            default => 'none',
+                        },
+                        'text' => sprintf(
+                            '- `%s` %s in `%s`%s: %d %s (%s): %s. %s',
+                            $package['name'],
+                            $package['installed'],
+                            $package['lockfile'],
+                            $package['dev'] ? ' (dev dependency)' : '',
+                            $advisories,
+                            $advisories === 1 ? 'advisory' : 'advisories',
+                            $severityList,
+                            implode('; ', $package['advisories']),
+                            $fix,
+                        ),
+                    ];
                 }
                 break;
 
@@ -254,6 +290,7 @@ class FixPrompt
                 'Regenerate lockfiles with the same package-manager version the project\'s CI or production uses (check engines/packageManager fields, CI config, or the deploy server) to avoid lockfile churn, then confirm a clean install works (e.g. npm ci --dry-run, composer install --dry-run).',
                 'If a package is only vulnerable through another dependency, upgrade the direct dependency that pulls it in. If that parent pins it exactly, use the package manager\'s override/resolution mechanism (npm overrides, pnpm overrides, yarn resolutions, composer conflict) for a patch-level fix, and note each override in your summary so it can be removed once the parent package updates.',
                 'If only a new major version fixes it, or no fix exists, do not upgrade: put it under "Needs review" with the breaking changes to expect.',
+                'For every "Needs review" item, assess the real exposure so a person can decide: does it ship to production or only affect local development/CI, and is the vulnerable code path actually reachable in this project? Say which parent package pulls it in if it is not a direct dependency.',
                 'Dev dependencies matter less for production, but fix them the same way when the upgrade is safe.',
             ]],
             'semgrep' => ['code security issues', [

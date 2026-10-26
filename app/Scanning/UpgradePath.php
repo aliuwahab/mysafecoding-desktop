@@ -54,6 +54,25 @@ class UpgradePath
     }
 
     /**
+     * The higher of two version strings (null-safe), e.g. to find one upgrade
+     * that fixes every advisory of a package.
+     */
+    public static function higher(?string $a, ?string $b): ?string
+    {
+        $pa = $a !== null ? static::parse($a) : null;
+        $pb = $b !== null ? static::parse($b) : null;
+
+        if ($pa === null) {
+            return $pb !== null ? $b : $a;
+        }
+        if ($pb === null) {
+            return $a;
+        }
+
+        return [$pb['numbers'], ! $pb['pre']] > [$pa['numbers'], ! $pa['pre']] ? $b : $a;
+    }
+
+    /**
      * @return array{numbers: array{int, int, int}, pre: bool}|null
      */
     protected static function parse(string $version): ?array
