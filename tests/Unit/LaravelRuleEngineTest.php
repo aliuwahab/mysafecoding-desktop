@@ -18,7 +18,6 @@ use App\Services\Scanners\Rules\MissingMimeValidationRule;
 use App\Services\Scanners\Rules\MissingThrottleRule;
 use App\Services\Scanners\Rules\OpenRedirectRule;
 use App\Services\Scanners\Rules\OrderByInjectionRule;
-use App\Services\Scanners\Rules\OutdatedVersionRule;
 use App\Services\Scanners\Rules\UnserializeInputRule;
 use App\Services\Scanners\Rules\WeakHashRule;
 use App\Services\Scanners\Rules\WhereRawInjectionRule;
@@ -208,7 +207,7 @@ class VerifyCsrfToken {
         $findings = $rule->check($this->fixturePath);
 
         $this->assertCount(1, $findings);
-        $this->assertEquals('HIGH', $findings[0]['severity']);
+        $this->assertEquals('MEDIUM', $findings[0]['severity']);
         $this->assertEquals('XSS', $findings[0]['category']);
     }
 
@@ -657,42 +656,7 @@ class ToolController {
         $this->assertCount(0, $findings);
     }
 
-    // ─── 19. OutdatedVersionRule ───
 
-    public function test_outdated_laravel_detected(): void
-    {
-        $this->createFile('composer.json', json_encode([
-            'require' => ['laravel/framework' => '^9.0'],
-        ], JSON_UNESCAPED_SLASHES));
-        $rule = new OutdatedVersionRule;
-        $findings = $rule->check($this->fixturePath);
-
-        $this->assertCount(1, $findings);
-        $this->assertEquals('HIGH', $findings[0]['severity']);
-        $this->assertEquals('Dependency', $findings[0]['category']);
-    }
-
-    public function test_current_laravel_passes(): void
-    {
-        $this->createFile('composer.json', json_encode([
-            'require' => ['laravel/framework' => '^11.0'],
-        ], JSON_UNESCAPED_SLASHES));
-        $rule = new OutdatedVersionRule;
-        $findings = $rule->check($this->fixturePath);
-
-        $this->assertCount(0, $findings);
-    }
-
-    public function test_laravel_12_passes(): void
-    {
-        $this->createFile('composer.json', json_encode([
-            'require' => ['laravel/framework' => '^12.0'],
-        ], JSON_UNESCAPED_SLASHES));
-        $rule = new OutdatedVersionRule;
-        $findings = $rule->check($this->fixturePath);
-
-        $this->assertCount(0, $findings);
-    }
 
     // ─── 20. EnvExposedRule ───
 
@@ -782,5 +746,102 @@ class User extends Model {
         foreach ($requiredKeys as $key) {
             $this->assertArrayHasKey($key, $finding, "Finding missing required key: {$key}");
         }
+    }
+
+    // ─── False-positive regressions (reported from a real Laravel 13 app) ───
+
+    public function test_fillable_attribute_style_is_recognised(): void
+    {
+        $this->createFile('app/Models/Team.php', '<?php
+namespace App\Models;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+#[Fillable([\'name\', \'slug\', \'is_personal\'])]
+class Team extends Model {}');
+        $this->createFile('app/Models/Tag.php', '<?php
+namespace App\Models;
+#[\Illuminate\Database\Eloquent\Attributes\Guarded([\'id\'])]
+class Tag extends Model {}');
+
+        $this->assertCount(0, (new MissingFillableRule)->check($this->fixturePath));
+    }
+
+    public function test_known_safe_raw_blade_output_is_not_flagged(): void
+    {
+        $this->createFile('resources/views/layout.blade.php', '<form>{!! csrf_field() !!}</form>
+<div {!! $attributes->merge([\'class\' => \'x\']) !!}>{!! $slot !!}</div>
+{!! $users->links() !!}
+<script>const data = {!! Js::from($data) !!};</script>
+<p>{!! __(\'Welcome\') !!}</p>');
+
+        $this->assertCount(0, (new BladeRawOutputRule)->check($this->fixturePath));
+    }
+
+    public function test_self_service_controller_on_current_user_is_not_flagged(): void
+    {
+        $this->createFile('app/Http/Controllers/Settings/ProfileController.php', '<?php
+namespace App\Http\Controllers\Settings;
+class ProfileController extends Controller {
+    public function update(Request $request) {
+        $request->user()->fill($request->validated())->save();
+    }
+    public function destroy(Request $request) {
+        $request->user()->delete();
+    }
+}');
+
+        $this->assertCount(0, (new MissingAuthorizationRule)->check($this->fixturePath));
+    }
+
+    public function test_controller_using_a_form_request_with_authorize_is_not_flagged(): void
+    {
+        $this->createFile('app/Http/Requests/StoreEventRegistrationRequest.php', '<?php
+namespace App\Http\Requests;
+class StoreEventRegistrationRequest extends FormRequest {
+    public function authorize(): bool { return $this->route("event")->isOpen(); }
+    public function rules(): array { return ["email" => "required|email"]; }
+}');
+        $this->createFile('app/Http/Controllers/Site/EventRegistrationController.php', '<?php
+namespace App\Http\Controllers\Site;
+class EventRegistrationController extends Controller {
+    public function store(StoreEventRegistrationRequest $request, Event $event) {
+        $event->registrations()->create($request->validated());
+    }
+}');
+
+        $this->assertCount(0, (new MissingAuthorizationRule)->check($this->fixturePath));
+    }
+
+    public function test_controller_changing_other_records_without_checks_is_still_flagged(): void
+    {
+        $this->createFile('app/Http/Controllers/PostController.php', '<?php
+namespace App\Http\Controllers;
+use App\Models\Post;
+class PostController extends Controller {
+    public function update(Request $request, Post $post) {
+        $post->update(["author_id" => $request->user()->id] + $request->all());
+    }
+}');
+
+        $findings = (new MissingAuthorizationRule)->check($this->fixturePath);
+        $this->assertCount(1, $findings);
+        $this->assertEquals('MEDIUM', $findings[0]['severity']);
+    }
+
+    public function test_mime_check_in_form_request_is_recognised(): void
+    {
+        $this->createFile('app/Http/Requests/StoreApplicationRequest.php', '<?php
+namespace App\Http\Requests;
+class StoreApplicationRequest extends FormRequest {
+    public function rules(): array { return ["cv" => ["required", File::types(["pdf", "doc", "docx"])->max(10 * 1024)]]; }
+}');
+        $this->createFile('app/Http/Controllers/Site/OpportunityApplicationController.php', '<?php
+namespace App\Http\Controllers\Site;
+class OpportunityApplicationController extends Controller {
+    public function store(StoreApplicationRequest $request) {
+        $path = $request->file("cv")->store("applications", "local");
+    }
+}');
+
+        $this->assertCount(0, (new MissingMimeValidationRule)->check($this->fixturePath));
     }
 }

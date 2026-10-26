@@ -101,6 +101,37 @@ abstract class BaseRule implements RuleInterface
         ];
     }
 
+    /**
+     * Source of the Form Request classes type-hinted in a controller's methods
+     * (Laravel puts validation and per-request authorization there).
+     *
+     * @return array<string, string> class name => file contents
+     */
+    protected function formRequestsUsedBy(string $controllerContent, string $projectPath): array
+    {
+        preg_match_all('/public\s+function\s+\w+\s*\(([^)]*)\)/', $controllerContent, $signatures);
+        preg_match_all('/\b([A-Z]\w*Request)\s+\$\w+/', implode(',', $signatures[1] ?? []), $types);
+
+        $requests = [];
+        foreach (array_unique($types[1] ?? []) as $class) {
+            if ($class === 'Request') {
+                continue;
+            }
+            foreach ($this->findPhpFiles($projectPath, 'app') as $file) {
+                if (basename($file) !== $class.'.php') {
+                    continue;
+                }
+                $content = $this->readFile($file);
+                if ($content !== null && preg_match('/class\s+'.$class.'\s+extends\s+\w*Request\b/', $content)) {
+                    $requests[$class] = $content;
+                    break;
+                }
+            }
+        }
+
+        return $requests;
+    }
+
     protected function readFile(string $path): ?string
     {
         if (! file_exists($path) || ! is_readable($path)) {

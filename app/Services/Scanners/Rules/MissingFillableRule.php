@@ -4,23 +4,48 @@ namespace App\Services\Scanners\Rules;
 
 class MissingFillableRule extends BaseRule
 {
-    public function id(): string { return 'laravel.mass-assignment.missing-fillable'; }
-    public function title(): string { return 'Mass Assignment: No $fillable or $guarded'; }
-    public function severity(): string { return 'MEDIUM'; }
-    public function category(): string { return 'Code'; }
+    public function id(): string
+    {
+        return 'laravel.mass-assignment.missing-fillable';
+    }
+
+    public function title(): string
+    {
+        return 'Mass Assignment: No $fillable or $guarded';
+    }
+
+    public function severity(): string
+    {
+        return 'MEDIUM';
+    }
+
+    public function category(): string
+    {
+        return 'Code';
+    }
 
     public function check(string $projectPath): array
     {
         $findings = [];
         foreach ($this->findPhpFiles($projectPath, 'app/Models') as $file) {
             $content = $this->readFile($file);
-            if (! $content) continue;
-            if (! preg_match('/extends\s+Model\b/', $content)) continue;
-            if (preg_match('/\$(fillable|guarded)\s*=/', $content)) continue;
+            if (! $content) {
+                continue;
+            }
+            if (! preg_match('/extends\s+Model\b/', $content)) {
+                continue;
+            }
+            // Property style ($fillable / $guarded) or attribute style (#[Fillable([...])], #[Guarded], #[Unguarded]).
+            if (preg_match('/\$(fillable|guarded)\s*=|#\[\s*[\w\\\\]*(Fillable|Guarded|Unguarded)\b/', $content)) {
+                continue;
+            }
 
             $line = 1;
             foreach (explode("\n", $content) as $i => $l) {
-                if (preg_match('/class\s+\w+\s+extends\s+Model/', $l)) { $line = $i + 1; break; }
+                if (preg_match('/class\s+\w+\s+extends\s+Model/', $l)) {
+                    $line = $i + 1;
+                    break;
+                }
             }
             $findings[] = $this->makeFinding(
                 $file, $projectPath, $line,
@@ -28,6 +53,7 @@ class MissingFillableRule extends BaseRule
                 'Add a $fillable array listing the columns that should be mass-assignable, or add $guarded with columns to protect.',
             );
         }
+
         return $findings;
     }
 }

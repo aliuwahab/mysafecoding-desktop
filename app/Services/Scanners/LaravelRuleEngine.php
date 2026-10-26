@@ -36,7 +36,6 @@ class LaravelRuleEngine
             Rules\UnserializeInputRule::class,
             Rules\EvalDynamicRule::class,
             Rules\CommandInjectionRule::class,
-            Rules\OutdatedVersionRule::class,
             Rules\EnvExposedRule::class,
         ];
 

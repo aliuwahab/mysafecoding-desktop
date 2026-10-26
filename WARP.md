@@ -15,7 +15,7 @@ CheckMyCode is a free, open-source security scanner for the stacks developers sh
 - [x] Trivy dependency vulnerability scanning
 - [x] Semgrep static analysis (SAST)
 - [x] Gitleaks secrets detection
-- [x] 20 custom framework security rules for Laravel apps
+- [x] Custom framework security rules for Laravel apps
 - [x] Multi-language project detection for PHP, JavaScript/TypeScript, Python, Ruby, Go, Rust, Elixir, Java, and .NET
 - [x] Popular framework detection for Laravel, Symfony, Next.js, Nuxt, React, Vue, Svelte, Angular, NestJS, Express, Django, Flask, FastAPI, Rails, Phoenix, and Spring
 - [x] Real-time log streaming

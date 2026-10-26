@@ -226,6 +226,7 @@ class FixPrompt
                 'If a secret is also in git history, say so in your summary but do not rewrite git history yourself.',
             ]],
             'rules' => ['framework and security rule findings', [
+                'These come from pattern-based rules that read one file at a time. They cannot see protections that live elsewhere (Form Requests, route middleware, policies, model attributes such as #[Fillable], or upstream HTML sanitizers), so verify each one in context before changing anything.',
                 'Apply the suggested fix where one is given, adapted to the surrounding code.',
                 'For mass-assignment, authorisation, CSRF and rate-limiting findings, add the missing protection without changing what legitimate users can do.',
             ]],
