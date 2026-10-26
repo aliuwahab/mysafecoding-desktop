@@ -45,7 +45,7 @@ class WebScanController extends Controller
         }
 
         $id = EphemeralScanStore::create($projectName, $exclusions);
-        EphemeralScanStore::appendLog($id, "Received {$count} files for {$projectName}. Waiting for a scanner...");
+        EphemeralScanStore::appendLog($id, "Received {$count} files over HTTPS into a temporary workspace. Waiting for a scanner...");
         $store->remember($id);
 
         RunWebScan::dispatch($id, $workspace, $exclusions);

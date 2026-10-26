@@ -103,6 +103,7 @@ document.addEventListener('alpine:init', () => {
         exclusions: config.exclusions ?? [],
         busy: false,
         phase: '',
+        showPrivacy: false,
         error: null,
         dragging: false,
 
@@ -239,7 +240,7 @@ document.addEventListener('alpine:init', () => {
             this.error = null;
 
             try {
-                this.phase = 'Compressing…';
+                this.phase = 'Preparing files…';
                 const data = {};
                 for (const entry of this.files) {
                     data[entry.path] = new Uint8Array(await entry.file.arrayBuffer());
@@ -258,7 +259,7 @@ document.addEventListener('alpine:init', () => {
                 const response = await this.send(form);
                 await this.$wire.webScanStarted(response.id);
             } catch (e) {
-                this.error = e.message || 'Upload failed.';
+                this.error = e.message || 'Could not send your files to the scanner.';
             } finally {
                 this.busy = false;
                 this.phase = '';
@@ -273,7 +274,7 @@ document.addEventListener('alpine:init', () => {
                 request.setRequestHeader('Accept', 'application/json');
                 request.upload.onprogress = (event) => {
                     if (event.lengthComputable) {
-                        this.phase = `Uploading ${Math.round((event.loaded / event.total) * 100)}%`;
+                        this.phase = `Sending securely ${Math.round((event.loaded / event.total) * 100)}%`;
                     }
                 };
                 request.onload = () => {
@@ -288,13 +289,13 @@ document.addEventListener('alpine:init', () => {
                     } else if (request.status === 429) {
                         reject(new Error('Scan limit reached for now. Please try again later, or run CheckMyCode locally with Docker or the desktop app.'));
                     } else if (request.status === 413) {
-                        reject(new Error('The upload is too large for this server.'));
+                        reject(new Error('This project is too large for the web scanner. Add exclusions, scan a sub-folder, or use the CLI.'));
                     } else {
-                        reject(new Error(body.message || `Upload failed (HTTP ${request.status}).`));
+                        reject(new Error(body.message || `Could not start the scan (HTTP ${request.status}).`));
                     }
                 };
-                request.onerror = () => reject(new Error('Network error while uploading.'));
-                this.phase = 'Uploading…';
+                request.onerror = () => reject(new Error('Network error while sending your files. Nothing was kept; please try again.'));
+                this.phase = 'Sending securely…';
                 request.send(form);
             });
         },

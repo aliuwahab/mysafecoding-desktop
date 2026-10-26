@@ -117,6 +117,7 @@ class WebScanTest extends TestCase
         $this->assertSame('completed', $scan['status']);
         $this->assertSame(3, $scan['findings_count']);
         $this->assertDirectoryDoesNotExist($workspace);
+        $this->assertNotNull($scan = EphemeralScanStore::raw($id)['code_deleted_at']);
         $this->assertSame(['today' => 1, 'total' => 1], \App\Scanning\ScanCounter::stats());
     }
 
@@ -153,6 +154,9 @@ class WebScanTest extends TestCase
             ->assertOk()
             ->assertSee('webkitdirectory', false)
             ->assertSee('web · nothing stored')
+            ->assertSee('Private scan.')
+            ->assertSee('What happens to my code?')
+            ->assertSee('Deleted immediately:')
             ->assertDontSee('Install via Homebrew')
             ->assertSee('https://github.com/aliuwahab"', false)
             ->assertSee('https://github.com/sponsors/aliuwahab', false)

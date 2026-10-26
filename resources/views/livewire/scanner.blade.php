@@ -282,6 +282,23 @@
     @endif
 </div>
 
+@if ($webMode)
+{{-- ── Privacy strip: what happens to the selected files ─────────────── --}}
+<div style="padding:7px 20px;border-bottom:1px solid var(--line-1);background:color-mix(in srgb,var(--sev-ok) 5%,var(--bg-1));display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--fg-2);">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-ok);flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    <span x-show="!busy">
+        <strong style="color:var(--fg-1);font-weight:600;">Private scan.</strong>
+        Excluded folders never leave your browser. The rest is sent over HTTPS to a temporary workspace, scanned, and <strong style="color:var(--fg-1);font-weight:600;">deleted as soon as the scan finishes</strong>. Your code is never stored.
+    </span>
+    <span x-show="busy" x-cloak>
+        <strong style="color:var(--fg-1);font-weight:600;" x-text="phase"></strong>
+        Your files go to a temporary workspace only for this scan and are deleted right after it.
+    </span>
+    <span style="flex:1;"></span>
+    <button type="button" @click="showPrivacy = true" style="color:var(--sev-ok);white-space:nowrap;text-decoration:underline;text-underline-offset:2px;">What happens to my code?</button>
+</div>
+@endif
+
 {{-- ── Tab Bar ──────────────────────────────────────────────────────── --}}
 @php
     $summary = $this->results['summary'] ?? [];
@@ -469,9 +486,14 @@
             @endif
             </span>
           @endif
-          @if ($webMode)
+          @if ($webMode && $scanRecord)
             <span style="color:var(--fg-4);">·</span>
-            <span title="Uploaded files were deleted when the scan finished.">code deleted · results expire in {{ $webLimits['ttlMinutes'] }} min</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;color:var(--sev-ok);">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-ok);flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              {{ $scanRecord->codeDeletedAt ? 'Your code was deleted from the server at '.$scanRecord->codeDeletedAt->format('H:i:s') : 'Your code is deleted when the scan finishes' }}
+            </span>
+            <span style="color:var(--fg-4);">·</span>
+            <span>findings expire {{ ($scanRecord->codeDeletedAt ?? $scanRecord->completedAt ?? $scanRecord->createdAt)->copy()->addMinutes($webLimits['ttlMinutes'])->format('H:i') }}</span>
           @endif
           @if ($ignoredStats['total'] > 0)
             <span style="color:var(--fg-4);">·</span>
@@ -992,6 +1014,28 @@
     <span style="color:var(--sev-critical);">✗</span>
     <span x-text="error" style="flex:1;"></span>
     <button type="button" @click="error = null" style="color:var(--fg-3);">×</button>
+</div>
+@endif
+
+@if ($webMode)
+<div x-show="showPrivacy" x-cloak @keydown.escape.window="showPrivacy = false" @click.self="showPrivacy = false" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">
+    <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:14px;padding:26px 28px;width:520px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-ok);flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <h3 class="serif" style="font-size:22px;font-weight:400;color:var(--fg-1);margin:0;">What happens to my code</h3>
+        </div>
+        <ol style="margin:0 0 16px;padding-left:20px;font-size:12.5px;color:var(--fg-2);line-height:1.65;display:flex;flex-direction:column;gap:6px;">
+            <li><strong style="color:var(--fg-1);">In your browser:</strong> excluded folders (<span class="mono">node_modules</span>, <span class="mono">vendor</span>, <span class="mono">.git</span>, …), media and large binaries are filtered out. They never leave your machine.</li>
+            <li><strong style="color:var(--fg-1);">Sent over HTTPS:</strong> the remaining files are compressed and sent to the scanner for this one scan.</li>
+            <li><strong style="color:var(--fg-1);">Scanned in a temporary workspace:</strong> open-source scanners (Trivy, Semgrep, Gitleaks) run against it. Nothing is shared with third parties; only package names and versions are checked against public vulnerability databases.</li>
+            <li><strong style="color:var(--fg-1);">Deleted immediately:</strong> the workspace is deleted the moment the scan finishes, whether it succeeds or fails. Your summary shows the exact time.</li>
+            <li><strong style="color:var(--fg-1);">Findings expire:</strong> the results (including short code snippets around each finding) are kept for {{ $webLimits['ttlMinutes'] }} minutes so you can view them, visible only to this browser, then they're gone. Secret values are masked.</li>
+        </ol>
+        <p style="font-size:12px;color:var(--fg-3);margin:0 0 18px;line-height:1.6;">No account, no database of projects. The only thing counted is the number of scans. Want nothing to leave your machine at all? Use the desktop app or CLI: same scanner, fully local.</p>
+        <div style="display:flex;justify-content:flex-end;">
+            <button type="button" @click="showPrivacy = false" style="padding:8px 18px;font-size:12px;color:#fff;background:var(--accent);border-radius:8px;font-weight:600;">Got it</button>
+        </div>
+    </div>
 </div>
 @endif
 

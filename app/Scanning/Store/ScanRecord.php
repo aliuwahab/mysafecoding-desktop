@@ -22,6 +22,7 @@ final class ScanRecord
         public readonly CarbonInterface $createdAt,
         public readonly ?CarbonInterface $startedAt = null,
         public readonly ?CarbonInterface $completedAt = null,
+        public readonly ?CarbonInterface $codeDeletedAt = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -39,6 +40,7 @@ final class ScanRecord
             createdAt: $date($data['created_at']) ?? Carbon::now(),
             startedAt: $date($data['started_at'] ?? null),
             completedAt: $date($data['completed_at'] ?? null),
+            codeDeletedAt: $date($data['code_deleted_at'] ?? null),
         );
     }
 

@@ -35,7 +35,7 @@ class RunWebScan implements ShouldQueue
         $id = $this->scanId;
 
         EphemeralScanStore::update($id, ['status' => 'running', 'started_at' => now()->toIso8601String()]);
-        EphemeralScanStore::appendLog($id, 'Upload received. Starting security scan...');
+        EphemeralScanStore::appendLog($id, 'Scanning your files in a temporary, private workspace. They are deleted as soon as the scan finishes.');
 
         try {
             $results = $engine->run(
@@ -59,7 +59,10 @@ class RunWebScan implements ShouldQueue
             EphemeralScanStore::update($id, ['status' => 'failed', 'completed_at' => now()->toIso8601String()]);
         } finally {
             $files->deleteDirectory($this->workspace);
-            EphemeralScanStore::appendLog($id, 'Uploaded code deleted from the server.');
+            if (! is_dir($this->workspace)) {
+                EphemeralScanStore::update($id, ['code_deleted_at' => now()->toIso8601String()]);
+                EphemeralScanStore::appendLog($id, 'Your files have been permanently deleted from the server.');
+            }
         }
     }
 
