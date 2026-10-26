@@ -179,11 +179,20 @@
 
     {{-- Footer --}}
     <div style="padding:10px 14px;border-top:1px solid var(--line-1);display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:var(--fg-3);">
-        <span style="display:flex;align-items:center;gap:5px;">
-            <span style="width:6px;height:6px;border-radius:50%;background:var(--sev-ok);display:block;"></span>
-            All engines ready
-        </span>
-        <span class="mono" title="{{ $webMode ? 'Uploaded code is deleted as soon as the scan finishes. No accounts, no database.' : 'Scans run on this machine.' }}">{{ $webMode ? 'web · nothing stored' : 'local' }}</span>
+        @if ($webMode)
+            <span style="display:flex;align-items:center;gap:8px;">
+                <a href="{{ route('terms') }}" target="_blank" style="color:var(--fg-2);text-decoration:none;">Terms</a>
+                <span style="color:var(--fg-4);">·</span>
+                <a href="{{ route('terms') }}#9-license" target="_blank" style="color:var(--fg-2);text-decoration:none;">MIT License</a>
+            </span>
+            <span class="mono" title="Uploaded code is deleted as soon as the scan finishes.">no code stored</span>
+        @else
+            <span style="display:flex;align-items:center;gap:5px;">
+                <span style="width:6px;height:6px;border-radius:50%;background:var(--sev-ok);display:block;"></span>
+                All engines ready
+            </span>
+            <span class="mono" title="Scans run on this machine.">local</span>
+        @endif
     </div>
 </aside>
 
@@ -295,6 +304,7 @@
         Your files go to a temporary workspace only for this scan and are deleted right after it.
     </span>
     <span style="flex:1;"></span>
+    <span style="white-space:nowrap;color:var(--fg-3);">By scanning, you agree to the <a href="{{ route('terms') }}" target="_blank" style="color:var(--fg-2);text-decoration:underline;text-underline-offset:2px;">Terms</a>.</span>
     <button type="button" @click="showPrivacy = true" style="color:var(--sev-ok);white-space:nowrap;text-decoration:underline;text-underline-offset:2px;">What happens to my code?</button>
 </div>
 @endif
@@ -1035,6 +1045,7 @@
         </ol>
         <p style="font-size:12px;color:var(--fg-3);margin:0 0 18px;line-height:1.6;">No account, no database of projects. The only thing counted is the number of scans. Want nothing to leave your machine at all? Use the desktop app or CLI: same scanner, fully local.</p>
         <div style="display:flex;justify-content:flex-end;">
+            <a href="{{ route('terms') }}" target="_blank" style="margin-right:auto;align-self:center;font-size:12px;color:var(--fg-2);">Read the full Terms</a>
             <button type="button" @click="showPrivacy = false" style="padding:8px 18px;font-size:12px;color:#fff;background:var(--accent);border-radius:8px;font-weight:600;">Got it</button>
         </div>
     </div>

@@ -153,7 +153,9 @@ class WebScanTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertSee('webkitdirectory', false)
-            ->assertSee('web · nothing stored')
+            ->assertSee('no code stored')
+            ->assertSee('By scanning, you agree to the')
+            ->assertSee(route('terms'), false)
             ->assertSee('Private scan.')
             ->assertSee('What happens to my code?')
             ->assertSee('Deleted immediately:')
@@ -163,5 +165,17 @@ class WebScanTest extends TestCase
             ->assertDontSee('Hosted scan')
             ->assertDontSee('CI YAML')
             ->assertDontSee('⌘');
+    }
+
+    public function test_terms_page_explains_code_is_not_stored_and_includes_the_license(): void
+    {
+        $this->get('/terms')
+            ->assertOk()
+            ->assertSee('Terms of Use')
+            ->assertSee('We do not store your code.')
+            ->assertSee('deleted as soon as the scan finishes')
+            ->assertSee('Permission is hereby granted, free of charge')
+            ->assertSee('id="9-license"', false)
+            ->assertDontSee('googleapis');
     }
 }
