@@ -78,7 +78,7 @@ docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/checkmycode scan /src
 | `--no-history` | Skip git-history secret scanning. |
 | `--offline` | Skip endoflife.date lookups. Trivy and Semgrep still need their databases and rules. |
 
-The desktop app's **CI YAML** button generates a GitHub Actions workflow that runs the Docker image on every PR and uploads SARIF to GitHub code scanning.
+Set `CHECKMYCODE_CI_WORKFLOW=true` to show a **CI YAML** button that generates a GitHub Actions workflow. The workflow runs the Docker image on every PR and uploads SARIF to GitHub code scanning. Enable it only once the Docker image is publicly pullable.
 
 ## How it works
 

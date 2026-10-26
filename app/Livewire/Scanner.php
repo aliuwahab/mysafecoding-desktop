@@ -366,6 +366,10 @@ class Scanner extends Component
 
     public function exportGithubActionsWorkflow()
     {
+        if (! config('checkmycode.ci_workflow')) {
+            return null;
+        }
+
         return $this->saveFile(
             'checkmycode.yml',
             GitHubActionsWorkflowGenerator::generate($this->exclusions, config('checkmycode.docker_image')),

@@ -156,6 +156,8 @@ class WebScanTest extends TestCase
             ->assertDontSee('Install via Homebrew')
             ->assertSee('https://github.com/aliuwahab"', false)
             ->assertSee('https://github.com/sponsors/aliuwahab', false)
-            ->assertDontSee('Hosted scan');
+            ->assertDontSee('Hosted scan')
+            ->assertDontSee('CI YAML')
+            ->assertDontSee('⌘');
     }
 }

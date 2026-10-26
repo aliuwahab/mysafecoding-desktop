@@ -78,6 +78,10 @@ return [
 
     'docker_image' => env('CHECKMYCODE_DOCKER_IMAGE', 'ghcr.io/aliuwahab/checkmycode:latest'),
 
+    // The "CI YAML" button generates a workflow that pulls docker_image. Only
+    // enable it once that image is publicly pullable, or the workflow fails.
+    'ci_workflow' => filter_var(env('CHECKMYCODE_CI_WORKFLOW', false), FILTER_VALIDATE_BOOL),
+
     // Shown in the sidebar: CheckMyCode is free and open source.
     'github_url' => env('CHECKMYCODE_GITHUB_URL', 'https://github.com/aliuwahab'),
     'sponsor_url' => env('CHECKMYCODE_SPONSOR_URL', 'https://github.com/sponsors/aliuwahab'),

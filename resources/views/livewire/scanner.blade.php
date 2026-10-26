@@ -15,13 +15,6 @@
             <i class="c"></i><i class="m"></i><i class="x"></i>
         </div>
         @endunless
-        <button wire:click="newScan" title="New scan" style="color:var(--fg-3);display:flex;align-items:center;padding:4px;" class="no-drag">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
-        </button>
-        <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--fg-3);">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><circle cx="6" cy="18" r="2"/><path d="M6 8v8M18 8a6 6 0 0 1-6 6H8"/></svg>
-            <span class="mono">main</span>
-        </div>
     </div>
 
     {{-- Center: breadcrumb --}}
@@ -58,16 +51,6 @@
                 <span>Ready</span>
             @endif
         </div>
-        <div style="width:1px;height:16px;background:var(--line-1);"></div>
-        <button wire:click="exportSarif" title="Export SARIF" style="color:var(--fg-3);padding:4px;display:flex;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
-        </button>
-        <button wire:click="exportGithubActionsWorkflow" title="Generate GitHub Actions workflow" style="color:var(--fg-3);padding:4px;display:flex;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M8.5 8.5 15.5 15.5"/><path d="M6 9v6a3 3 0 0 0 3 3h6"/></svg>
-        </button>
-        <button wire:click="exportJson" title="Export JSON" style="color:var(--fg-3);padding:4px;display:flex;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-        </button>
     </div>
 </div>
 
@@ -94,10 +77,6 @@
             <span style="display:flex;align-items:center;gap:6px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
                 New scan
-            </span>
-            <span style="display:flex;gap:2px;">
-                <span class="kbd" style="background:rgba(0,0,0,0.25);border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.85);">⌘</span>
-                <span class="kbd" style="background:rgba(0,0,0,0.25);border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.85);">N</span>
             </span>
         </button>
         {{-- Free and open source: point people at the repo and sponsorship --}}
@@ -299,7 +278,6 @@
         <button wire:click="startScan" @disabled(!$projectPath) style="display:flex;align-items:center;gap:7px;padding:0 16px;height:32px;background:var(--accent);color:#fff;border-radius:7px;font-size:12px;font-weight:600;box-shadow:0 1px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15);">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16l14-8L6 4Z" fill="currentColor"/></svg>
             Scan
-            <span class="kbd" style="background:rgba(0,0,0,0.25);border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.85);">⌘R</span>
         </button>
     @endif
 </div>
@@ -365,10 +343,12 @@
         </button>
     @endforeach
     <div style="flex:1;"></div>
+    @if (config('checkmycode.ci_workflow'))
     <button wire:click="exportGithubActionsWorkflow" style="display:flex;align-items:center;gap:6px;padding:6px 10px;margin:6px 6px 6px 0;font-size:11.5px;color:var(--fg-2);background:var(--bg-2);border:1px solid var(--line-1);border-radius:6px;">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M8.5 8.5 15.5 15.5"/><path d="M6 9v6a3 3 0 0 0 3 3h6"/></svg>
         CI YAML
     </button>
+    @endif
     <button wire:click="exportSarif" @disabled(!$results) style="display:flex;align-items:center;gap:6px;padding:6px 10px;margin:6px 6px 6px 0;font-size:11.5px;color:var(--fg-2);background:var(--bg-2);border:1px solid var(--line-1);border-radius:6px;opacity:{{ $results ? '1' : '0.45' }};">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
         SARIF
@@ -435,7 +415,7 @@
                         <div style="font-size:11.5px;">Excluded folders never leave your browser. The rest is scanned in a temporary workspace and deleted as soon as the scan finishes. No account, no database, no stored code.</div>
                     </div>
                 @else
-                    <span>Select a project and press <span class="kbd" style="margin:0 3px;">⌘R</span> to scan.</span>
+                    <span>Select a project folder or file, then press Scan.</span>
                 @endif
             </div>
         @endforelse
