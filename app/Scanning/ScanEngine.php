@@ -370,19 +370,29 @@ class ScanEngine
         $results['trivy'] = $merged['trivy'];
 
         $counts = ['CRITICAL' => 0, 'HIGH' => 0, 'MEDIUM' => 0, 'LOW' => 0];
+        $devCount = 0;
         foreach ($results['trivy']['Results'] as $target) {
             foreach ($target['Vulnerabilities'] ?? [] as $vuln) {
+                if ($vuln['DevDependency'] ?? false) {
+                    $devCount++;
+
+                    continue;
+                }
                 $severity = $vuln['Severity'] ?? 'LOW';
                 $counts[$severity] = ($counts[$severity] ?? 0) + 1;
             }
         }
         $results['summary']['trivy'] = $counts;
         $results['summary']['trivy_total'] = array_sum($counts);
+        $results['summary']['dev_dependencies_total'] = $devCount;
         $results['meta']['osv_added'] = $merged['added'];
 
-        $this->log($merged['added'] > 0
-            ? "OSV-Scanner: {$merged['added']} additional vulnerable dependencies not in Trivy's database."
-            : 'OSV-Scanner: no additional vulnerabilities (all already reported by Trivy).', 'trivy');
+        $prodAdded = $merged['added'] - $devCount;
+        $this->log(sprintf(
+            'OSV-Scanner: %d additional vulnerable dependencies not in Trivy\'s database%s.',
+            $prodAdded,
+            $devCount > 0 ? ", plus {$devCount} in dev dependencies (shown, not graded)" : '',
+        ), 'trivy');
 
         return $results;
     }

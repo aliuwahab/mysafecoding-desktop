@@ -43,6 +43,8 @@ class OsvScannerResults
 
             foreach ($source['packages'] ?? [] as $package) {
                 $name = (string) ($package['package']['name'] ?? '');
+                // Build and test tooling: reported, but not graded (Trivy skips these entirely).
+                $isDev = in_array('dev', $package['dependency_groups'] ?? [], true);
                 $scores = static::groupScores($package['groups'] ?? []);
 
                 foreach ($package['vulnerabilities'] ?? [] as $vuln) {
@@ -73,6 +75,7 @@ class OsvScannerResults
                         'Title' => $vuln['summary'] ?? mb_strimwidth((string) ($vuln['details'] ?? ''), 0, 160, '…'),
                         'PrimaryURL' => 'https://osv.dev/vulnerability/'.$vuln['id'],
                         'DataSource' => ['ID' => 'osv', 'Name' => 'OSV-Scanner'],
+                        'DevDependency' => $isDev,
                     ];
                 }
             }

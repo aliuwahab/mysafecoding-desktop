@@ -79,4 +79,21 @@ class ScannerParsersTest extends TestCase
 
         $this->assertSame(0, $result['summary']['total']);
     }
+
+    public function test_osv_dev_dependencies_are_flagged(): void
+    {
+        $osv = ['results' => [[
+            'source' => ['path' => '/w/package-lock.json'],
+            'packages' => [[
+                'package' => ['name' => 'vite', 'version' => '7.3.1', 'ecosystem' => 'npm'],
+                'dependency_groups' => ['dev'],
+                'vulnerabilities' => [['id' => 'GHSA-xxxx-yyyy-zzzz', 'aliases' => ['CVE-2026-0001'], 'summary' => 'dev server file read']],
+                'groups' => [],
+            ]],
+        ]]];
+
+        $vuln = OsvScannerResults::merge(null, $osv, '/w')['trivy']['Results'][0]['Vulnerabilities'][0];
+
+        $this->assertTrue($vuln['DevDependency']);
+    }
 }

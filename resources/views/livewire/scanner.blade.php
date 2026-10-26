@@ -687,6 +687,11 @@
         <span style="font-size:11.5px;color:var(--fg-3);">Trivy + OSV-Scanner · public CVE databases for every lockfile</span>
     </div>
     <div style="padding:4px 32px 32px;">
+      @if (($summary['dev_dependencies_total'] ?? 0) > 0)
+        <div style="margin:12px 0;padding:12px 16px;background:color-mix(in srgb,var(--sev-low) 8%,transparent);border:1px solid color-mix(in srgb,var(--sev-low) 22%,transparent);border-radius:8px;font-size:12px;color:var(--fg-2);line-height:1.5;">
+          {{ $summary['dev_dependencies_total'] }} {{ Str::plural('vulnerability', $summary['dev_dependencies_total']) }} marked <span class="mono" style="color:var(--fg-1);">DEV</span> are in development dependencies (build and test tools). They don't count toward your grade, but still fix them if the package ends up in your shipped bundle (common for front-end libraries) or your dev server is reachable from a network.
+        </div>
+      @endif
       @if (!empty($results['trivy']['Results']))
         <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
           <div style="display:grid;grid-template-columns:84px 160px 200px 110px 110px 1fr 100px;padding:10px 16px;border-bottom:1px solid var(--line-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);background:var(--bg-1);">
@@ -712,6 +717,9 @@
                   @endphp
                   <span style="font-size:9px;font-weight:700;letter-spacing:0.06em;padding:1px 4px;border-radius:3px;background:{{ $ecoBg }};color:{{ $ecoColor }};font-family:var(--font-mono);">{{ $eco }}</span>
                   <span class="mono" style="color:var(--fg-1);">{{ $vuln['PkgName']??'' }}</span>
+                  @if (!empty($vuln['DevDependency']))
+                    <span title="Dev dependency: not graded" style="font-size:9px;font-weight:700;letter-spacing:0.06em;padding:1px 4px;border-radius:3px;background:var(--bg-3);color:var(--fg-3);font-family:var(--font-mono);">DEV</span>
+                  @endif
                 </span>
                 <span class="mono" style="color:var(--fg-3);">{{ $vuln['InstalledVersion']??'' }}</span>
                 <span class="mono" style="color:var(--sev-ok);">→ {{ $vuln['FixedVersion']??'N/A' }}</span>

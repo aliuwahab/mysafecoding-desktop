@@ -137,6 +137,9 @@ class ScanCommand extends Command
         if (isset($summary['endoflife_total'])) {
             $rows[] = ['Lifecycle (end-of-life)', $summary['endoflife_total'], $this->breakdown($summary['endoflife'] ?? [])];
         }
+        if (($summary['dev_dependencies_total'] ?? 0) > 0) {
+            $rows[] = ['Dev dependencies (not graded)', $summary['dev_dependencies_total'], 'build/test tooling'];
+        }
         $rows[] = ['Licenses (not graded)', $summary['licenses_total'] ?? 0, 'flagged copyleft / restricted'];
         $rows[] = ['Code quality (not graded)', $summary['code_quality_total'] ?? 0, $this->breakdown($summary['code_quality'] ?? [])];
 
