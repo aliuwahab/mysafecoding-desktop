@@ -239,7 +239,7 @@
     @if ($webMode)
         <input type="file" x-ref="folderInput" webkitdirectory directory multiple style="display:none;" @change="pickedFolder($event)">
         <input type="file" x-ref="fileInput" multiple style="display:none;" @change="pickedFiles($event)">
-        <button type="button" @click="$refs.folderInput.click()" :disabled="busy" style="display:flex;align-items:center;gap:8px;padding:6px 11px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;">
+        <button type="button" @click="pickFolder()" :disabled="busy" style="display:flex;align-items:center;gap:8px;padding:6px 11px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;">
             {!! $folderIcon !!}
             <span class="mono" style="color:var(--fg-1);font-weight:500;">{{ $projectPath ?: 'Select Folder' }}</span>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);"><path d="m6 9 6 6 6-6"/></svg>
@@ -1066,6 +1066,7 @@
         </div>
         <ol style="margin:0 0 16px;padding-left:20px;font-size:12.5px;color:var(--fg-2);line-height:1.65;display:flex;flex-direction:column;gap:6px;">
             <li><strong style="color:var(--fg-1);">In your browser:</strong> excluded folders (<span class="mono">node_modules</span>, <span class="mono">vendor</span>, <span class="mono">.git</span>, …), media and large binaries are filtered out. They never leave your machine.</li>
+            <li><strong style="color:var(--fg-1);">Your browser asks first:</strong> when you pick a folder, your browser shows its own confirmation ("View files" or "Upload files … only do this if you trust the site"). That message comes from the browser and can't be changed by websites. It's there to protect you. Prefer no prompt? Drag the folder onto the page instead.</li>
             <li><strong style="color:var(--fg-1);">Sent over HTTPS:</strong> the remaining files are compressed and sent to the scanner for this one scan.</li>
             <li><strong style="color:var(--fg-1);">Scanned in a temporary workspace:</strong> open-source scanners (Trivy, OSV-Scanner, Semgrep, Gitleaks, zizmor) run against it. Nothing is shared with third parties; only package names and versions are checked against public vulnerability databases.</li>
             <li><strong style="color:var(--fg-1);">Deleted immediately:</strong> the workspace is deleted the moment the scan finishes, whether it succeeds or fails. Your summary shows the exact time.</li>

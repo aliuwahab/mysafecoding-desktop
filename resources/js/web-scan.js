@@ -85,6 +85,27 @@ async function collectEntry(entry, prefix, exclusions, out) {
     } while (batch.length > 0);
 }
 
+/**
+ * Walk a folder opened with the File System Access API. Excluded folders are
+ * skipped before they are opened, so their contents are never even read.
+ */
+async function collectHandle(directory, prefix, exclusions, out) {
+    for await (const [name, handle] of directory.entries()) {
+        const path = prefix ? `${prefix}/${name}` : name;
+
+        if (isExcluded(path, exclusions)) {
+            out.excluded++;
+            continue;
+        }
+
+        if (handle.kind === 'file') {
+            out.files.push({ path, file: await handle.getFile() });
+        } else {
+            await collectHandle(handle, path, exclusions, out);
+        }
+    }
+}
+
 function zipAsync(data) {
     return new Promise((resolve, reject) => {
         zip(data, { level: 6 }, (error, archive) => (error ? reject(error) : resolve(archive)));
@@ -126,6 +147,45 @@ document.addEventListener('alpine:init', () => {
             }
 
             return parts.join(' · ');
+        },
+
+        /**
+         * Chrome/Edge: open the folder read-only with the File System Access
+         * API (milder browser prompt, excluded folders never read). Other
+         * browsers: the classic folder input.
+         */
+        async pickFolder() {
+            if (this.busy) {
+                return;
+            }
+            if (typeof window.showDirectoryPicker !== 'function') {
+                this.$refs.folderInput.click();
+                return;
+            }
+
+            let directory;
+            try {
+                directory = await window.showDirectoryPicker({ id: 'checkmycode', mode: 'read' });
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    // Blocked (e.g. a system folder) or unsupported here: fall back.
+                    this.$refs.folderInput.click();
+                }
+                return;
+            }
+
+            this.busy = true;
+            this.phase = 'Reading folder…';
+            try {
+                const out = { files: [], excluded: 0 };
+                await collectHandle(directory, '', this.exclusions, out);
+                this.setSelection(directory.name, out.files, out.excluded);
+            } catch (e) {
+                this.error = 'Could not read that folder. Try dragging it onto the page instead.';
+            } finally {
+                this.busy = false;
+                this.phase = '';
+            }
         },
 
         pickedFolder(event) {
