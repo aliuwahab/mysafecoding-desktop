@@ -2,34 +2,24 @@
 
 namespace App\Livewire;
 
-use App\Models\IgnoredFinding;
 use App\Models\Scan;
-use App\Models\ScanLog;
+use App\Providers\AppServiceProvider;
+use App\Scanning\ScanEngine;
+use App\Scanning\ScanGrade;
+use App\Scanning\Store\ScanRecord;
+use App\Scanning\Store\ScanStore;
 use App\Services\GitHubActionsWorkflowGenerator;
 use App\Services\SarifExporter;
 use App\Services\ScannerService;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Native\Desktop\Dialog;
 use Native\Desktop\Facades\Shell;
 
 class Scanner extends Component
 {
-    private const DEFAULT_EXCLUSIONS = [
-        'vendor',
-        'node_modules',
-        'storage',
-        'bootstrap/cache',
-        'public/build',
-        'dist',
-        'build',
-        'coverage',
-        '.next',
-        '.nuxt',
-        '.venv',
-        '__pycache__',
-        'target',
-    ];
+    public bool $webMode = false;
 
     public ?string $projectPath = null;
 
@@ -37,7 +27,7 @@ class Scanner extends Component
 
     public array $exclusions = [];
 
-    public ?int $activeScanId = null;
+    public ?string $activeScanId = null;
 
     public string $activeTab = 'log';
 
@@ -45,7 +35,7 @@ class Scanner extends Component
 
     public ?array $results = null;
 
-    public ?int $selectedHistoryId = null;
+    public ?string $selectedHistoryId = null;
 
     public string $status = 'idle'; // idle, running, completed, failed
 
@@ -55,7 +45,7 @@ class Scanner extends Component
 
     public bool $showSetup = false;
 
-    public ?int $compareWithScanId = null;
+    public ?string $compareWithScanId = null;
 
     public ?array $scanDiff = null;
 
@@ -67,27 +57,25 @@ class Scanner extends Component
 
     public function mount(): void
     {
-        $this->exclusions = self::DEFAULT_EXCLUSIONS;
-        $this->missingTools = ScannerService::checkDependencies();
+        $this->webMode = AppServiceProvider::isWebMode();
+        $this->exclusions = config('mysafecoding.default_exclusions');
+        $this->missingTools = ScanEngine::missingTools();
         $this->showSetup = ! empty($this->missingTools);
 
-        if (! Schema::hasTable('scans')) {
-            return;
-        }
-
-        $lastScan = Scan::latestFirst()->first();
+        $lastScan = $this->store()->history()->first();
         if ($lastScan) {
             $this->loadScan($lastScan->id);
         }
     }
 
+    protected function store(): ScanStore
+    {
+        return app(ScanStore::class);
+    }
+
     public function loadIgnoredFindings(): void
     {
-        if ($this->projectPath && Schema::hasTable('ignored_findings')) {
-            $this->ignoredFindings = IgnoredFinding::getIgnoredMap($this->projectPath);
-        } else {
-            $this->ignoredFindings = [];
-        }
+        $this->ignoredFindings = $this->projectPath ? $this->store()->ignoredMap($this->projectPath) : [];
     }
 
     public function isIgnored(string $scanner, string $fingerprint): bool
@@ -120,14 +108,7 @@ class Scanner extends Component
 
         [$scanner, $fingerprint] = explode(':', $this->pendingIgnoreKey, 2);
 
-        IgnoredFinding::updateOrCreate(
-            [
-                'project_path' => $this->projectPath,
-                'scanner' => $scanner,
-                'fingerprint' => $fingerprint,
-            ],
-            ['reason' => $this->ignoreReason ?: null]
-        );
+        $this->store()->ignore($this->projectPath, $scanner, $fingerprint, $this->ignoreReason ?: null);
 
         $this->loadIgnoredFindings();
         $this->pendingIgnoreKey = null;
@@ -140,22 +121,18 @@ class Scanner extends Component
             return;
         }
 
-        IgnoredFinding::where('project_path', $this->projectPath)
-            ->where('scanner', $scanner)
-            ->where('fingerprint', $fingerprint)
-            ->delete();
+        $this->store()->unignore($this->projectPath, $scanner, $fingerprint);
 
         $this->loadIgnoredFindings();
     }
 
-    public function getIgnoredStatsProperty(): array
+    #[Computed]
+    public function ignoredStats(): array
     {
-        $stats = ['total' => 0, 'trivy' => 0, 'semgrep' => 0, 'gitleaks' => 0, 'laravel_rules' => 0, 'env_audit' => 0];
-        foreach ($this->ignoredFindings as $key => $reason) {
+        $stats = ['total' => 0];
+        foreach (array_keys($this->ignoredFindings) as $key) {
             $scanner = explode(':', $key, 2)[0];
-            if (isset($stats[$scanner])) {
-                $stats[$scanner]++;
-            }
+            $stats[$scanner] = ($stats[$scanner] ?? 0) + 1;
             $stats['total']++;
         }
 
@@ -163,6 +140,16 @@ class Scanner extends Component
     }
 
     public function newScan(): void
+    {
+        $this->resetScanState();
+
+        if ($this->webMode) {
+            $this->projectPath = null;
+            $this->dispatch('web-selection-cleared');
+        }
+    }
+
+    protected function resetScanState(): void
     {
         $this->selectedHistoryId = null;
         $this->activeScanId = null;
@@ -177,6 +164,10 @@ class Scanner extends Component
 
     public function selectFolder(): void
     {
+        if ($this->webMode) {
+            return; // The browser picker is handled client-side.
+        }
+
         $path = Dialog::new()
             ->title('Select Project Folder')
             ->folders()
@@ -187,6 +178,36 @@ class Scanner extends Component
         }
     }
 
+    public function selectFile(): void
+    {
+        if ($this->webMode) {
+            return;
+        }
+
+        $path = Dialog::new()
+            ->title('Select File to Scan')
+            ->files()
+            ->open();
+
+        if ($path) {
+            $this->projectPath = is_array($path) ? $path[0] : $path;
+        }
+    }
+
+    /**
+     * Web mode: the browser picked a folder or files and keeps them in memory
+     * until Scan is pressed.
+     */
+    public function webSelectionChanged(?string $name): void
+    {
+        if (! $this->webMode) {
+            return;
+        }
+
+        $this->resetScanState();
+        $this->projectPath = $name ? mb_substr($name, 0, 120) : null;
+    }
+
     public function addExclusion(): void
     {
         $exclusion = trim($this->newExclusion);
@@ -194,16 +215,25 @@ class Scanner extends Component
             $this->exclusions[] = $exclusion;
         }
         $this->newExclusion = '';
+        $this->dispatch('exclusions-changed', exclusions: $this->exclusions);
     }
 
     public function removeExclusion(int $index): void
     {
         unset($this->exclusions[$index]);
         $this->exclusions = array_values($this->exclusions);
+        $this->dispatch('exclusions-changed', exclusions: $this->exclusions);
     }
 
     public function startScan(): void
     {
+        if ($this->webMode) {
+            // Uploading happens in the browser, which then calls webScanStarted().
+            $this->dispatch('web-scan-requested');
+
+            return;
+        }
+
         if (! $this->projectPath || $this->status === 'running') {
             return;
         }
@@ -214,45 +244,66 @@ class Scanner extends Component
             'exclusions' => $this->exclusions,
         ]);
 
-        $this->activeScanId = $scan->id;
-        $this->selectedHistoryId = $scan->id;
+        $this->beginTracking((string) $scan->id);
+
+        ScannerService::startScan($scan);
+    }
+
+    public function webScanStarted(string $scanId): void
+    {
+        if (! $this->webMode || ! $this->store()->find($scanId)) {
+            return;
+        }
+
+        $this->beginTracking($scanId);
+    }
+
+    protected function beginTracking(string $scanId): void
+    {
+        $this->activeScanId = $scanId;
+        $this->selectedHistoryId = $scanId;
         $this->status = 'running';
         $this->activeTab = 'log';
         $this->logs = [];
         $this->results = null;
         $this->lastLogId = 0;
+        $this->compareWithScanId = null;
+        $this->scanDiff = null;
+    }
 
-        ScannerService::startScan($scan);
+    public function stopScan(): void
+    {
+        if (! $this->activeScanId) {
+            return;
+        }
+
+        if (! $this->webMode && ($scan = Scan::find((int) $this->activeScanId))) {
+            ScannerService::stopScan($scan);
+        }
+
+        $this->pollLogs();
     }
 
     public function pollLogs(): void
     {
-        if (! $this->activeScanId || ! Schema::hasTable('scans') || ! Schema::hasTable('scan_logs')) {
+        if (! $this->activeScanId) {
             return;
         }
 
-        $scan = Scan::find($this->activeScanId);
+        $scan = $this->store()->find($this->activeScanId);
         if (! $scan) {
             return;
         }
 
-        $newLogs = ScanLog::where('scan_id', $this->activeScanId)
-            ->when($this->lastLogId > 0, fn ($query) => $query->where('id', '>', $this->lastLogId))
-            ->orderBy('id')
-            ->get();
+        $newLogs = $this->store()->logsSince($scan->id, $this->lastLogId);
 
-        if ($newLogs->isNotEmpty()) {
-            $this->logs = array_merge($this->logs, $newLogs->map(fn ($log) => [
-                'line' => $log->line,
-                'scanner' => $log->scanner,
-                'level' => $log->level,
-                'time' => $log->created_at->format('H:i:s'),
-            ])->toArray());
-            $this->lastLogId = $newLogs->last()->id;
+        if ($newLogs !== []) {
+            $this->logs = array_merge($this->logs, $newLogs);
+            $this->lastLogId = (int) end($newLogs)['id'];
             $this->dispatch('scroll-log');
         }
 
-        if (in_array($scan->status, ['completed', 'failed'])) {
+        if ($scan->isFinished()) {
             $this->status = $scan->status;
             $this->results = $scan->results;
             $this->activeScanId = null;
@@ -264,151 +315,135 @@ class Scanner extends Component
         }
     }
 
-    public function loadScan(int $scanId): void
+    public function loadScan(string $scanId): void
     {
-        if (! Schema::hasTable('scans')) {
-            return;
-        }
-
-        $scan = Scan::find($scanId);
+        $scan = $this->store()->find($scanId);
         if (! $scan) {
             return;
         }
 
-        $this->selectedHistoryId = $scanId;
-        $this->projectPath = $scan->project_path;
-        $this->exclusions = $scan->exclusions ?? [];
-        $this->status = $scan->status;
+        $this->selectedHistoryId = $scan->id;
+        $this->projectPath = $scan->projectPath;
+        $this->exclusions = $scan->exclusions ?: config('mysafecoding.default_exclusions');
+        $this->status = $scan->status === 'pending' ? 'running' : $scan->status;
         $this->results = $scan->results;
         $this->compareWithScanId = null;
         $this->scanDiff = null;
+        $this->activeScanId = $scan->isFinished() ? null : $scan->id;
 
-        if ($scan->status === 'running') {
-            $this->activeScanId = $scanId;
-        } else {
-            $this->activeScanId = null;
-        }
-
-        $logs = ScanLog::where('scan_id', $scanId)
-            ->orderBy('id')
-            ->get();
-
-        $this->logs = $logs->map(fn ($log) => [
-            'line' => $log->line,
-            'scanner' => $log->scanner,
-            'level' => $log->level,
-            'time' => $log->created_at->format('H:i:s'),
-        ])
-            ->toArray();
-
-        $this->lastLogId = $logs->last()?->id ?? 0;
+        $this->logs = $this->store()->logsSince($scan->id);
+        $this->lastLogId = $this->logs === [] ? 0 : (int) end($this->logs)['id'];
         $this->activeTab = $scan->status === 'completed' ? 'summary' : 'log';
         $this->loadIgnoredFindings();
     }
 
-    public function exportJson(): void
+    public function exportJson()
     {
         if (! $this->results) {
-            return;
+            return null;
         }
 
-        $path = Dialog::new()
-            ->title('Save Scan Report')
-            ->defaultPath('mysafecoding-report.json')
-            ->save();
-
-        if ($path) {
-            file_put_contents($path, json_encode($this->results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        }
+        return $this->saveFile(
+            'mysafecoding-report.json',
+            json_encode($this->results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            'Save Scan Report',
+        );
     }
 
-    public function exportSarif(): void
+    public function exportSarif()
     {
         if (! $this->results) {
-            return;
+            return null;
         }
 
-        $path = Dialog::new()
-            ->title('Save SARIF Report')
-            ->defaultPath('mysafecoding-report.sarif')
-            ->save();
-
-        if ($path) {
-            file_put_contents($path, json_encode(SarifExporter::fromResults($this->results), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        }
+        return $this->saveFile(
+            'mysafecoding-report.sarif',
+            json_encode(SarifExporter::fromResults($this->results), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            'Save SARIF Report',
+        );
     }
 
-    public function exportGithubActionsWorkflow(): void
+    public function exportGithubActionsWorkflow()
     {
+        return $this->saveFile(
+            'mysafecoding.yml',
+            GitHubActionsWorkflowGenerator::generate($this->exclusions, config('mysafecoding.docker_image')),
+            'Save GitHub Actions Workflow',
+        );
+    }
+
+    /**
+     * Desktop: native save dialog. Web: browser download.
+     */
+    protected function saveFile(string $filename, string $contents, string $title)
+    {
+        if ($this->webMode) {
+            return response()->streamDownload(fn () => print ($contents), $filename);
+        }
+
         $path = Dialog::new()
-            ->title('Save GitHub Actions Workflow')
-            ->defaultPath('mysafecoding.yml')
+            ->title($title)
+            ->defaultPath($filename)
             ->save();
 
         if ($path) {
-            file_put_contents($path, GitHubActionsWorkflowGenerator::generate($this->exclusions));
+            file_put_contents($path, $contents);
         }
+
+        return null;
     }
 
     public function openComprehensiveScan(): void
     {
-        Shell::openExternal('https://www.mysafecoding.com/');
+        $url = config('mysafecoding.hosted_url');
+
+        if ($this->webMode) {
+            $this->js('window.open('.json_encode($url).', "_blank", "noopener")');
+
+            return;
+        }
+
+        Shell::openExternal($url);
     }
 
     public function getSecurityGrade(): array
     {
         if (! $this->results || ! isset($this->results['summary'])) {
-            return ['grade' => '-', 'color' => 'text-slate-500', 'bg' => 'bg-slate-500/10 border-slate-500/20'];
+            return ['grade' => '-'];
         }
 
-        $summary = $this->results['summary'];
-        $criticals = ($summary['trivy']['CRITICAL'] ?? 0) + ($summary['laravel_rules']['CRITICAL'] ?? 0) + ($summary['env_audit']['CRITICAL'] ?? 0);
-        $highs = ($summary['trivy']['HIGH'] ?? 0) + ($summary['semgrep']['ERROR'] ?? 0) + ($summary['laravel_rules']['HIGH'] ?? 0) + ($summary['env_audit']['HIGH'] ?? 0);
-        $mediums = ($summary['trivy']['MEDIUM'] ?? 0) + ($summary['semgrep']['WARNING'] ?? 0) + ($summary['laravel_rules']['MEDIUM'] ?? 0) + ($summary['env_audit']['MEDIUM'] ?? 0);
-        $secrets = $summary['gitleaks_total'] ?? 0;
-
-        if ($secrets > 0 || $criticals > 0) {
-            return ['grade' => 'F', 'color' => 'text-red-400', 'bg' => 'bg-red-500/10 border-red-500/20'];
-        }
-        if ($highs > 3) {
-            return ['grade' => 'D', 'color' => 'text-orange-400', 'bg' => 'bg-orange-500/10 border-orange-500/20'];
-        }
-        if ($highs > 0) {
-            return ['grade' => 'C', 'color' => 'text-yellow-400', 'bg' => 'bg-yellow-500/10 border-yellow-500/20'];
-        }
-        if ($mediums > 0) {
-            return ['grade' => 'B', 'color' => 'text-blue-400', 'bg' => 'bg-blue-500/10 border-blue-500/20'];
-        }
-
-        return ['grade' => 'A', 'color' => 'text-emerald-400', 'bg' => 'bg-emerald-500/10 border-emerald-500/20'];
+        return ['grade' => $this->results['summary']['grade'] ?? ScanGrade::fromSummary($this->results['summary'])];
     }
 
-    public function compareScan(int $scanId): void
+    public function compareScan(string $scanId): void
     {
         if (! $this->results || ! $this->selectedHistoryId) {
             return;
         }
 
-        $oldScan = Scan::find($scanId);
+        $oldScan = $this->store()->find($scanId);
         if (! $oldScan || ! $oldScan->results) {
             return;
         }
 
         $oldSummary = $oldScan->results['summary'] ?? [];
         $newSummary = $this->results['summary'] ?? [];
+        $delta = fn (string $key): int => ($newSummary[$key] ?? 0) - ($oldSummary[$key] ?? 0);
 
         $this->compareWithScanId = $scanId;
         $this->scanDiff = [
-            'old_date' => $oldScan->created_at->format('M j, H:i'),
-            'new_date' => Scan::find($this->selectedHistoryId)?->created_at->format('M j, H:i') ?? 'Current',
-            'trivy' => ($newSummary['trivy_total'] ?? 0) - ($oldSummary['trivy_total'] ?? 0),
-            'semgrep' => ($newSummary['semgrep_total'] ?? 0) - ($oldSummary['semgrep_total'] ?? 0),
-            'gitleaks' => ($newSummary['gitleaks_total'] ?? 0) - ($oldSummary['gitleaks_total'] ?? 0),
-            'laravel_rules' => ($newSummary['laravel_rules_total'] ?? 0) - ($oldSummary['laravel_rules_total'] ?? 0),
-            'env_audit' => ($newSummary['env_audit_total'] ?? 0) - ($oldSummary['env_audit_total'] ?? 0),
-            'code_quality' => ($newSummary['code_quality_total'] ?? 0) - ($oldSummary['code_quality_total'] ?? 0),
-            'total' => (($newSummary['trivy_total'] ?? 0) + ($newSummary['semgrep_total'] ?? 0) + ($newSummary['gitleaks_total'] ?? 0) + ($newSummary['laravel_rules_total'] ?? 0) + ($newSummary['env_audit_total'] ?? 0))
-                - (($oldSummary['trivy_total'] ?? 0) + ($oldSummary['semgrep_total'] ?? 0) + ($oldSummary['gitleaks_total'] ?? 0) + ($oldSummary['laravel_rules_total'] ?? 0) + ($oldSummary['env_audit_total'] ?? 0)),
+            'old_date' => $oldScan->createdAt->format('M j, H:i'),
+            'new_date' => $this->store()->find($this->selectedHistoryId)?->createdAt->format('M j, H:i') ?? 'Current',
+            'trivy' => $delta('trivy_total'),
+            'semgrep' => $delta('semgrep_total'),
+            'gitleaks' => $delta('gitleaks_total'),
+            'laravel_rules' => $delta('laravel_rules_total'),
+            'custom_rules' => $delta('custom_rules_total'),
+            'trivy_config' => $delta('trivy_config_total'),
+            'endoflife' => $delta('endoflife_total'),
+            'env_audit' => $delta('env_audit_total'),
+            'code_quality' => $delta('code_quality_total'),
+            'total' => ScanEngine::findingsCount($this->results) - ScanEngine::findingsCount($oldScan->results),
         ];
     }
 
@@ -418,57 +453,57 @@ class Scanner extends Component
         $this->scanDiff = null;
     }
 
-    public function getComparableScansProperty()
+    #[Computed]
+    public function comparableScans(): Collection
     {
-        if (! $this->projectPath || ! $this->selectedHistoryId || ! Schema::hasTable('scans')) {
-            return collect();
-        }
+        $current = $this->selectedHistoryId ? $this->store()->find($this->selectedHistoryId) : null;
 
-        return Scan::where('project_path', $this->projectPath)
-            ->where('status', 'completed')
-            ->where('id', '!=', $this->selectedHistoryId)
-            ->latestFirst()
-            ->take(10)
-            ->get();
+        return $current ? $this->store()->comparable($current) : collect();
+    }
+
+    #[Computed]
+    public function selectedScan(): ?ScanRecord
+    {
+        return $this->selectedHistoryId ? $this->store()->find($this->selectedHistoryId) : null;
     }
 
     public function installTools(): void
     {
-        ScannerService::installDependencies();
+        if (! $this->webMode) {
+            ScannerService::installDependencies();
+        }
     }
 
     public function recheckTools(): void
     {
-        $this->missingTools = ScannerService::checkDependencies();
+        $this->missingTools = ScanEngine::missingTools();
         $this->showSetup = ! empty($this->missingTools);
     }
 
-    public function deleteScan(int $scanId): void
+    public function deleteScan(string $scanId): void
     {
-        if (! Schema::hasTable('scans')) {
-            return;
-        }
-
-        ScanLog::where('scan_id', $scanId)->delete();
-        Scan::where('id', $scanId)->delete();
+        $this->store()->delete($scanId);
 
         if ($this->selectedHistoryId === $scanId) {
             $this->newScan();
         }
     }
 
-    public function getHistoryProperty()
+    #[Computed]
+    public function history(): Collection
     {
-        if (! Schema::hasTable('scans')) {
-            return collect();
-        }
-
-        return Scan::latestFirst()->take(20)->get();
+        return $this->store()->history();
     }
 
     public function render()
     {
-        return view('livewire.scanner')
-            ->layout('layouts.app');
+        return view('livewire.scanner', [
+            'webLimits' => $this->webMode ? [
+                'maxUploadMb' => (int) config('mysafecoding.web.max_upload_mb'),
+                'maxFiles' => (int) config('mysafecoding.web.max_files'),
+                'ttlMinutes' => (int) config('mysafecoding.web.results_ttl_minutes'),
+                'uploadUrl' => route('web-scans.store'),
+            ] : null,
+        ])->layout('layouts.app');
     }
 }

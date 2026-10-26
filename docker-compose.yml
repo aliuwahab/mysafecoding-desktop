@@ -1,0 +1,21 @@
+# Self-host the MySafeCoding web scanner:  docker compose up -d  →  http://localhost:8080
+services:
+  mysafecoding:
+    build: .
+    image: ghcr.io/aliuwahab/mysafecoding:latest
+    command: web
+    ports:
+      - "8080:8080"
+    environment:
+      MYSAFECODING_WORKERS: 2               # concurrent scans
+      MYSAFECODING_WEB_SCANS_PER_HOUR: 10   # per IP
+      MYSAFECODING_WEB_RESULTS_TTL_MINUTES: 60
+      MYSAFECODING_WEB_MAX_UPLOAD_MB: 50
+    volumes:
+      # Trivy's vulnerability DB and endoflife.date lookups are cached here.
+      # Uploaded code is deleted after each scan; nothing else persists.
+      - mysafecoding-data:/data
+    restart: unless-stopped
+
+volumes:
+  mysafecoding-data:

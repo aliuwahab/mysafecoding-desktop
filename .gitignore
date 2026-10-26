@@ -24,4 +24,5 @@ Homestead.yaml
 Thumbs.db
 /nativephp
 /resources/cli/ls-output
+/mysafecoding-results
 /database/database.sqlite

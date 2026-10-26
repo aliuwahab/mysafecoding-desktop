@@ -1,6 +1,6 @@
-# Contributing to MySafeCoding Desktop
+# Contributing to MySafeCoding
 
-Thanks for helping improve MySafeCoding Desktop. This project is a local-first NativePHP app with bundled scanner scripts for dependency, static analysis, secret, environment, framework-rule, and quality checks.
+Thanks for helping improve MySafeCoding. One scan engine (`app/Scanning/ScanEngine.php`) powers the NativePHP desktop app, the hosted web scanner and the CLI, so a change to scanning lands in all three.
 
 ## Development Setup
 
@@ -12,19 +12,20 @@ php artisan key:generate
 php artisan migrate --force
 ```
 
-Start the desktop app:
+Start the desktop app, the web mode, or run the CLI:
 
 ```bash
 ./bin/native-run
+composer run web
+./bin/mysafecoding scan /path/to/project
 ```
 
 Run checks before opening a PR:
 
 ```bash
 ./vendor/bin/pint --dirty
-bash -n resources/cli/mysafecoding-scan.sh
 bash -n resources/cli/mysafecoding-setup.sh
-bash -n resources/cli/mysafecoding-inspect.sh
+for rules in resources/scanners/*.yml; do semgrep scan --validate --config "$rules" --metrics off; done
 php artisan test
 npm run build
 ```
@@ -40,12 +41,17 @@ npm run build
 
 ## Adding Framework Detection
 
-Project type detection exists in two places:
+Detection lives in `app/Scanning/ProjectDetector.php`. Map the new type to Semgrep packs in `app/Scanning/SemgrepRulesets.php` and add coverage in `tests/Unit/ProjectTypeDetectionTest.php`.
 
-- `resources/cli/mysafecoding-scan.sh` writes `project-type.txt`
-- `app/Services/ScannerService.php` has a PHP fallback when scan output is missing
+## Adding Rules
 
-Update both paths and add coverage in `tests/Unit/ProjectTypeDetectionTest.php`.
+- **Semgrep rules** (preferred, AST-aware) go in `resources/scanners/<language>.yml` with ids prefixed `mysafecoding.`. Validate them with `semgrep scan --validate`, and check them against both a vulnerable and a safe sample. Remember that `patterns:` means AND; use `pattern-either:` for alternatives.
+- **Pattern rules** (regex, any file type) go in `app/Scanning/Rules/PatternRuleScanner.php`. Add a test in `tests/Unit/PatternRuleScannerTest.php`.
+- **Laravel rules** are classes in `app/Services/Scanners/Rules/`, registered in `LaravelRuleEngine`.
+
+## Web Mode Rules
+
+Web mode must never keep user code. Anything new that touches uploads has to work inside `RunWebScan`'s workspace, which is deleted in a `finally` block. Results must go through `EphemeralScanStore` (cache plus session) and never into the database.
 
 ## Adding Export Formats
 

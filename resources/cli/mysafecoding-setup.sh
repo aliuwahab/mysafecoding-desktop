@@ -66,16 +66,6 @@ else
     ok "Gitleaks installed: $(gitleaks version 2>&1)"
 fi
 
-# ── Step 5: Install jq (JSON pretty-printer, needed for parsing output) ────
-step "5. Installing jq (JSON parser — needed for reading scan output)"
-if command -v jq &>/dev/null; then
-    ok "jq already installed: $(jq --version)"
-else
-    brew install jq
-    ok "jq installed"
-fi
-
-# ── Summary ────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo -e "${BOLD}${GREEN}  All scanners installed successfully!               ${RESET}"
@@ -85,8 +75,7 @@ echo "  Scanner versions:"
 echo "  - Trivy:    $(trivy --version 2>&1 | head -1)"
 echo "  - Semgrep:  $(semgrep --version)"
 echo "  - Gitleaks: $(gitleaks version 2>&1)"
-echo "  - jq:       $(jq --version)"
 echo ""
-echo -e "${BOLD}Next step:${RESET} Run the scan script:"
-echo "  mysafecoding-scan.sh /path/to/your/project"
+echo -e "${BOLD}Next step:${RESET} Return to MySafeCoding and press Recheck, or from a checkout run:"
+echo "  ./bin/mysafecoding scan /path/to/your/project"
 echo ""

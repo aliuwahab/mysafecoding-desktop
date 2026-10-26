@@ -30,6 +30,17 @@ MySafeCoding Desktop is the fast, local-first security scanner developers can us
 
 ---
 
+### v2.0: One engine, three surfaces
+- [x] Shared PHP scan engine for desktop, web and CLI (`mysafecoding:scan`)
+- [x] Hosted web mode: browser folder/file picking, client-side exclusions, scan-and-delete, no accounts or database
+- [x] Docker image for CLI, CI and self-hosting the web scanner
+- [x] Ported hosted-platform engines: custom Semgrep rules, cross-language pattern rules, endoflife.date lifecycle checks
+- [x] Trivy misconfiguration (IaC) and license scanning
+- [x] Single-file scanning
+- [x] CI workflow generator uses the Docker image and uploads SARIF to code scanning
+
+---
+
 ## In Progress
 
 ### v1.1 — Quick Wins & Medium Value Features

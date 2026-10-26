@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# MySafeCoding CLI: the same scan engine as the desktop and web apps.
+#
+#   ./bin/mysafecoding scan [path] [--exclude dir] [--format text|json|sarif] [--fail-on critical|high|medium|any]
+#   ./bin/mysafecoding scan --help
+#
+# Needs PHP 8.2+, Composer dependencies, and trivy, semgrep and gitleaks on PATH.
+# No local toolchain? Use Docker instead:
+#   docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/mysafecoding scan /src
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+case "${1:-}" in
+    scan)
+        shift
+        exec php "$ROOT/artisan" mysafecoding:scan "$@"
+        ;;
+    *)
+        echo "Usage: $(basename "$0") scan [path] [options]"
+        echo "Run '$(basename "$0") scan --help' for all options."
+        exit 64
+        ;;
+esac

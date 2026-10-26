@@ -65,10 +65,16 @@ abstract class BaseRule implements RuleInterface
 
         $start = max(0, $lineNumber - 1 - $context);
         $end = min(count($lines), $lineNumber + $context);
+        $isEnvFile = str_starts_with(basename($filePath), '.env');
         $snippet = [];
 
         for ($i = $start; $i < $end; $i++) {
-            $snippet[] = ($i + 1).': '.rtrim($lines[$i]);
+            $line = rtrim($lines[$i]);
+            // Never copy secrets from .env files into scan results.
+            if ($isEnvFile) {
+                $line = preg_replace('/^(\s*[A-Z0-9_]*(?:KEY|SECRET|PASSWORD|TOKEN|PASS|CREDENTIALS?|DSN)[A-Z0-9_]*\s*=\s*)\S.*$/i', '$1********', $line);
+            }
+            $snippet[] = ($i + 1).': '.$line;
         }
 
         return implode("\n", $snippet);

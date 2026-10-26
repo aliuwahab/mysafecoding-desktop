@@ -4,14 +4,16 @@ namespace App\Services;
 
 class GitHubActionsWorkflowGenerator
 {
-    public static function generate(array $exclusions = []): string
+    public static function generate(array $exclusions = [], string $image = 'ghcr.io/aliuwahab/mysafecoding:latest'): string
     {
         $excludeArgs = implode('', array_map(
             fn (string $exclusion): string => ' --exclude '.escapeshellarg($exclusion),
             array_values(array_unique(array_filter($exclusions))),
         ));
 
-        $scanCommand = '/tmp/mysafecoding-scan.sh . --output-dir mysafecoding-results --non-interactive'.$excludeArgs;
+        $scanCommand = 'docker run --rm -v "$PWD:/src" -w /src '.$image
+            .' scan /src --no-defaults'.$excludeArgs
+            .' --output-dir /src/mysafecoding-results --format sarif --output /src/mysafecoding.sarif --fail-on critical';
 
         return <<<YAML
 name: MySafeCoding
@@ -24,6 +26,7 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
   scan:
@@ -34,24 +37,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # full history so secrets in past commits are found
 
-      - name: Install scanners
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq wget
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
-          python3 -m pip install --user semgrep
-          wget -qO- https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz | sudo tar -xz -C /usr/local/bin gitleaks
-          echo "\$HOME/.local/bin" >> "\$GITHUB_PATH"
-
-      - name: Download MySafeCoding scanner
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/aliuwahab/laraguard-desktop/main/resources/cli/mysafecoding-scan.sh -o /tmp/mysafecoding-scan.sh
-          chmod +x /tmp/mysafecoding-scan.sh
-
+      # Trivy (public CVEs + IaC + licenses), Semgrep, Gitleaks, rule packs and
+      # end-of-life checks all ship inside the image. Change --fail-on to
+      # high, medium, any or none to tune when the job fails.
       - name: Run MySafeCoding scan
         run: {$scanCommand}
+
+      - name: Upload results to GitHub code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: mysafecoding.sarif
+          category: mysafecoding
 
       - name: Upload raw scan artifacts
         if: always()

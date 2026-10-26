@@ -68,7 +68,7 @@ class SarifExporterTest extends TestCase
         ]);
 
         $this->assertSame('2.1.0', $sarif['version']);
-        $this->assertSame('MySafeCoding Desktop', $sarif['runs'][0]['tool']['driver']['name']);
+        $this->assertSame('MySafeCoding', $sarif['runs'][0]['tool']['driver']['name']);
         $this->assertCount(6, $sarif['runs'][0]['results']);
         $this->assertContains('trivy.cve-2026-0001', array_column($sarif['runs'][0]['results'], 'ruleId'));
         $this->assertContains('framework.laravel.debug-mode', array_column($sarif['runs'][0]['results'], 'ruleId'));
