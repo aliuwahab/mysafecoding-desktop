@@ -6,10 +6,10 @@ use App\Jobs\RunWebScan;
 use App\Livewire\Scanner;
 use App\Scanning\ScanEngine;
 use App\Scanning\Store\EphemeralScanStore;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use ZipArchive;
 
