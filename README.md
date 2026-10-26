@@ -44,6 +44,8 @@ docker compose up -d          # → http://localhost:8080
 docker run --rm -p 8080:8080 ghcr.io/aliuwahab/checkmycode web
 ```
 
+Behind nginx, add `error_page 502 504 /errors/50x.html;` so visitors see a branded page if PHP is down; every other error page is rendered by the app.
+
 Limits are set with environment variables (see `.env.example`): upload size, file count, scans per hour per IP, result TTL, and concurrent workers (`CHECKMYCODE_WORKERS`).
 
 ### 2. Desktop: NativePHP app
