@@ -39,6 +39,12 @@ return [
         'gitleaks' => env('CHECKMYCODE_GITLEAKS_BINARY', 'gitleaks'),
     ],
 
+    // Extra engines: used when installed, skipped (with a log line) when not.
+    'optional_binaries' => [
+        'osv-scanner' => env('CHECKMYCODE_OSV_SCANNER_BINARY', 'osv-scanner'),
+        'zizmor' => env('CHECKMYCODE_ZIZMOR_BINARY', 'zizmor'),
+    ],
+
     'scanner_timeout_seconds' => (int) env('CHECKMYCODE_SCANNER_TIMEOUT_SECONDS', 600),
 
     /*

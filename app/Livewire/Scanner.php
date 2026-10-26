@@ -445,6 +445,7 @@ class Scanner extends Component
             'laravel_rules' => $delta('laravel_rules_total'),
             'custom_rules' => $delta('custom_rules_total'),
             'trivy_config' => $delta('trivy_config_total'),
+            'workflows' => $delta('workflows_total'),
             'endoflife' => $delta('endoflife_total'),
             'env_audit' => $delta('env_audit_total'),
             'code_quality' => $delta('code_quality_total'),

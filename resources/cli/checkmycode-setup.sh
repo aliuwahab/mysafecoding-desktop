@@ -66,6 +66,18 @@ else
     ok "Gitleaks installed: $(gitleaks version 2>&1)"
 fi
 
+# ── Step 5: Install OSV-Scanner and zizmor (optional extra engines) ───────
+step "5. Installing OSV-Scanner (second vulnerability database) and zizmor (GitHub Actions)"
+for tool in osv-scanner zizmor; do
+    if command -v "$tool" &>/dev/null; then
+        ok "$tool already installed"
+    else
+        info "Installing $tool via Homebrew..."
+        brew install "$tool"
+        ok "$tool installed"
+    fi
+done
+
 echo ""
 echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo -e "${BOLD}${GREEN}  All scanners installed successfully!               ${RESET}"
@@ -75,6 +87,8 @@ echo "  Scanner versions:"
 echo "  - Trivy:    $(trivy --version 2>&1 | head -1)"
 echo "  - Semgrep:  $(semgrep --version)"
 echo "  - Gitleaks: $(gitleaks version 2>&1)"
+echo "  - OSV-Scanner: $(osv-scanner --version 2>&1 | head -1)"
+echo "  - zizmor:   $(zizmor --version 2>&1)"
 echo ""
 echo -e "${BOLD}Next step:${RESET} Return to CheckMyCode and press Recheck, or from a checkout run:"
 echo "  ./bin/checkmycode scan /path/to/your/project"

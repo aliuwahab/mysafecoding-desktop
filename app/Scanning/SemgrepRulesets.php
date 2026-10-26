@@ -14,26 +14,34 @@ class SemgrepRulesets
     {
         $configs = ['p/secrets'];
 
-        if (ProjectDetector::isPhp($projectType)) {
-            array_push($configs, 'p/php', resource_path('scanners/php.yml'));
-        } elseif (ProjectDetector::isJavaScript($projectType)) {
-            array_push($configs, 'p/javascript', 'p/typescript', resource_path('scanners/javascript.yml'));
-        } elseif (ProjectDetector::isPython($projectType)) {
-            array_push($configs, 'p/python', resource_path('scanners/python.yml'));
-        } elseif (ProjectDetector::isRuby($projectType)) {
-            array_push($configs, 'p/ruby', resource_path('scanners/ruby.yml'));
-        } elseif (ProjectDetector::isJava($projectType)) {
-            $configs[] = 'p/java';
-        } else {
-            $configs = [...$configs, ...match ($projectType) {
-                'go' => ['p/golang'],
-                'rust' => ['p/rust'],
-                'dotnet' => ['p/csharp'],
-                default => [],
-            }];
+        $configs = [...$configs, ...match (true) {
+            ProjectDetector::isPhp($projectType) => ['p/php', resource_path('scanners/php.yml')],
+            ProjectDetector::isJavaScript($projectType) => ['p/javascript', 'p/typescript', resource_path('scanners/javascript.yml')],
+            ProjectDetector::isPython($projectType) => ['p/python', resource_path('scanners/python.yml')],
+            ProjectDetector::isRuby($projectType) => ['p/ruby', resource_path('scanners/ruby.yml')],
+            ProjectDetector::isJava($projectType) => ['p/java', 'p/kotlin'],
+            $projectType === 'go' => ['p/golang'],
+            $projectType === 'rust' => ['p/rust'],
+            $projectType === 'dotnet' => ['p/csharp'],
+            default => [],
+        }];
+
+        // Framework-specific packs.
+        $configs = [...$configs, ...match ($projectType) {
+            'django' => ['p/django'],
+            'flask' => ['p/flask'],
+            'fastapi' => ['p/fastapi'],
+            'react', 'nextjs' => ['p/react'],
+            'node', 'express', 'nestjs' => ['p/nodejsscan'],
+            default => [],
+        }];
+
+        // Cross-language OWASP Top 10 coverage (injection, XSS, crypto, JWT, ...).
+        if ($projectType !== 'unknown') {
+            $configs[] = 'p/owasp-top-ten';
         }
 
-        return $configs;
+        return array_values(array_unique($configs));
     }
 
     /**
@@ -45,13 +53,10 @@ class SemgrepRulesets
     {
         return match ($projectType) {
             'laravel', 'symfony', 'php' => ['p/phpcs-security-audit'],
-            'react' => ['p/react', 'p/react-best-practices', 'p/typescript'],
-            'nextjs' => ['p/react', 'p/react-best-practices', 'p/typescript'],
+            'react', 'nextjs' => ['p/react-best-practices', 'p/typescript'],
             'vue', 'nuxt', 'svelte', 'angular' => ['p/javascript', 'p/typescript'],
             'node', 'express', 'nestjs' => ['p/nodejs', 'p/typescript'],
-            'django' => ['p/django', 'p/bandit'],
-            'flask' => ['p/flask', 'p/bandit'],
-            'fastapi', 'python' => ['p/bandit'],
+            'django', 'flask', 'fastapi', 'python' => ['p/bandit'],
             'rails' => ['p/brakeman'],
             'ruby' => ['p/ruby'],
             'go' => ['p/gosec'],

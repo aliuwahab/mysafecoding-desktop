@@ -121,10 +121,11 @@ class ScanCommand extends Command
     {
         $summary = $results['summary'];
         $rows = [
-            ['Dependencies (Trivy · public CVEs)', $summary['trivy_total'] ?? 0, $this->breakdown($summary['trivy'] ?? [])],
+            ['Dependencies (Trivy + OSV)', $summary['trivy_total'] ?? 0, $this->breakdown($summary['trivy'] ?? [])],
             ['Code (Semgrep SAST)', $summary['semgrep_total'] ?? 0, $this->breakdown($summary['semgrep'] ?? [])],
             ['Secrets (Gitleaks)', $summary['gitleaks_total'] ?? 0, ($results['meta']['git_history'] ?? false) ? 'files + git history' : 'files only'],
             ['Misconfiguration (IaC)', $summary['trivy_config_total'] ?? 0, $this->breakdown($summary['trivy_config'] ?? [])],
+            ['GitHub Actions (zizmor)', $summary['workflows_total'] ?? 0, isset($results['workflows']) ? $this->breakdown($summary['workflows'] ?? []) : 'no workflows'],
             ['Custom rules', $summary['custom_rules_total'] ?? 0, $this->breakdown($summary['custom_rules'] ?? [])],
         ];
         if (isset($summary['laravel_rules_total'])) {

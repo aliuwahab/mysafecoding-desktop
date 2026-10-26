@@ -79,7 +79,7 @@
         <li><strong>Scan counter:</strong> we count completed scans per day (a date and a number) to show the community counter. Nothing about you or your project is recorded with it.</li>
         <li><strong>Server logs:</strong> like most websites, our web server keeps standard access logs (IP address, time, requested page, browser type) for security and abuse prevention. They are deleted after about 7 days. Your IP address is also used briefly to apply rate limits.</li>
         <li><strong>Cookies:</strong> we use only a session cookie and a security (CSRF) cookie, which the scanner needs to work. No analytics, advertising or tracking cookies.</li>
-        <li><strong>Third parties:</strong> your source code is never sent to a third party. To check dependencies, the scanner compares package names and versions against public vulnerability databases it downloads to our server, fetches open-source rule sets, and looks up runtime and framework versions (for example "Laravel 11" or "Node.js 20") on endoflife.date. Fonts and scripts are served from our own server.</li>
+        <li><strong>Third parties:</strong> your source code is never sent to a third party. To check dependencies, the scanner compares package names and versions against public vulnerability databases it downloads to our server (Trivy and OSV.dev), audits GitHub Actions workflows offline, fetches open-source rule sets, and looks up runtime and framework versions (for example "Laravel 11" or "Node.js 20") on endoflife.date. Fonts and scripts are served from our own server.</li>
     </ul>
 
     <h2 id="5-acceptable-use">5. Acceptable use</h2>
@@ -100,7 +100,7 @@
     <p>If you find a vulnerability in CheckMyCode itself, please report it privately via <a href="{{ $github }}" rel="noopener">GitHub</a> rather than publicly, and don't access data that isn't yours while testing.</p>
 
     <h2 id="8-open-source-components">8. Open-source components</h2>
-    <p>The scanner relies on open-source projects, each under its own license, including <a href="https://github.com/aquasecurity/trivy" rel="noopener">Trivy</a> (Apache-2.0), <a href="https://github.com/semgrep/semgrep" rel="noopener">Semgrep</a> (LGPL-2.1) and its rule registry, <a href="https://github.com/gitleaks/gitleaks" rel="noopener">Gitleaks</a> (MIT), and data from <a href="https://endoflife.date" rel="noopener">endoflife.date</a>. Those projects are not affiliated with CheckMyCode and don't endorse it.</p>
+    <p>The scanner relies on open-source projects, each under its own license, including <a href="https://github.com/aquasecurity/trivy" rel="noopener">Trivy</a> (Apache-2.0), <a href="https://github.com/google/osv-scanner" rel="noopener">OSV-Scanner</a> (Apache-2.0), <a href="https://github.com/semgrep/semgrep" rel="noopener">Semgrep</a> (LGPL-2.1) and its rule registry, <a href="https://github.com/gitleaks/gitleaks" rel="noopener">Gitleaks</a> (MIT), <a href="https://github.com/zizmorcore/zizmor" rel="noopener">zizmor</a> (MIT), and data from <a href="https://endoflife.date" rel="noopener">endoflife.date</a>. Those projects are not affiliated with CheckMyCode and don't endorse it.</p>
 
     <h2 id="9-license">9. License</h2>
     <p>The CheckMyCode software is free and open source under the MIT License:</p>

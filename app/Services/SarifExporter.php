@@ -33,6 +33,7 @@ class SarifExporter
             'laravel_rules' => ['framework', 'Framework Rules'],
             'custom_rules' => ['custom', 'Custom Rules'],
             'trivy_config' => ['config', 'Trivy Config'],
+            'workflows' => ['workflow', 'GitHub Actions (zizmor)'],
             'endoflife' => ['lifecycle', 'Lifecycle Support'],
         ] as $key => [$prefix, $label]) {
             foreach (static::ruleFindings($results, $key, $prefix, $label) as [$rule, $result]) {

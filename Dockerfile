@@ -18,6 +18,8 @@ ARG TARGETARCH
 ARG TRIVY_VERSION=0.69.3
 ARG GITLEAKS_VERSION=8.30.0
 ARG SEMGREP_VERSION=1.154.0
+ARG OSV_SCANNER_VERSION=2.7.0
+ARG ZIZMOR_VERSION=1.31.1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl git unzip libzip-dev libsqlite3-dev python3 python3-venv \
@@ -32,7 +34,12 @@ RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/
     && curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_${GL_ARCH}.tar.gz" | tar -xz -C /usr/local/bin gitleaks \
     && python3 -m venv /opt/semgrep \
     && /opt/semgrep/bin/pip install --no-cache-dir "semgrep==${SEMGREP_VERSION}" \
-    && ln -s /opt/semgrep/bin/semgrep /usr/local/bin/semgrep
+    && ln -s /opt/semgrep/bin/semgrep /usr/local/bin/semgrep \
+    && OSV_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo arm64 || echo amd64) \
+    && curl -sSfL "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_${OSV_ARCH}" -o /usr/local/bin/osv-scanner \
+    && chmod +x /usr/local/bin/osv-scanner \
+    && ZZ_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo aarch64 || echo x86_64) \
+    && curl -sSfL "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/zizmor-${ZZ_ARCH}-unknown-linux-gnu.tar.gz" | tar -xz -C /usr/local/bin zizmor
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/php.ini /usr/local/etc/php/conf.d/checkmycode.ini
@@ -60,6 +67,7 @@ ENV APP_ENV=production \
     QUEUE_CONNECTION=database \
     CHECKMYCODE_WEB_WORKSPACE=/data/workspaces \
     TRIVY_CACHE_DIR=/data/trivy \
+    XDG_CACHE_HOME=/data/cache-tools \
     SEMGREP_SEND_METRICS=off \
     PHP_CLI_SERVER_WORKERS=8
 

@@ -319,6 +319,7 @@
     $customTotal = $summary['custom_rules_total'] ?? 0;
     $rulesTotal = $laravelTotal + $customTotal;
     $configTotal = $summary['trivy_config_total'] ?? 0;
+    $workflowsTotal = $summary['workflows_total'] ?? 0;
     $lifecycleTotal = $summary['endoflife_total'] ?? 0;
     $licensesTotal = $summary['licenses_total'] ?? 0;
     $envTotal = $summary['env_audit_total'] ?? 0;
@@ -341,6 +342,8 @@
          'icon'=>'<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>'],
         ['id'=>'config',       'label'=>'Config',       'count'=>$configTotal,  'color'=>'var(--sev-medium)',
          'icon'=>'<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>'],
+        ['id'=>'workflows',    'label'=>'Workflows',    'count'=>$workflowsTotal, 'color'=>'var(--sev-high)',
+         'icon'=>'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M6 8.5v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M12 12.5v3"/>'],
         ['id'=>'lifecycle',    'label'=>'Lifecycle',    'count'=>$lifecycleTotal, 'color'=>'var(--sev-high)',
          'icon'=>'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'],
         ['id'=>'env_audit',    'label'=>'.env',         'count'=>$envTotal,     'color'=>'var(--sev-ok)',
@@ -351,7 +354,7 @@
          'icon'=>'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z"/><path d="M20 17v4H6.5A2.5 2.5 0 0 1 4 18.5"/>'],
     ];
     // Optional engines only get a tab when they have something to show.
-    $tabs = array_values(array_filter($tabs, fn ($t) => ! in_array($t['id'], ['config', 'lifecycle', 'licenses', 'env_audit'], true) || $t['count'] > 0 || $activeTab === $t['id']
+    $tabs = array_values(array_filter($tabs, fn ($t) => ! in_array($t['id'], ['config', 'workflows', 'lifecycle', 'licenses', 'env_audit'], true) || $t['count'] > 0 || $activeTab === $t['id']
         || ($t['id'] === 'lifecycle' && ! empty($results['endoflife']['components']))
         || ($t['id'] === 'env_audit' && ! empty($results['env_audit']))));
 @endphp
@@ -401,6 +404,7 @@
         'code_quality'=> ['bg'=>'rgba(200,150,255,0.14)', 'fg'=>'#c69dff'],
         'custom_rules'=> ['bg'=>'rgba(245,48,3,0.14)', 'fg'=>'var(--accent-hi)'],
         'endoflife'=> ['bg'=>'rgba(255,138,61,0.14)', 'fg'=>'var(--sev-high)'],
+        'workflows'=> ['bg'=>'rgba(255,138,61,0.14)', 'fg'=>'var(--sev-high)'],
     ];
 @endphp
 <div style="flex:1;display:flex;flex-direction:column;background:var(--log-bg);min-height:0;">
@@ -517,7 +521,7 @@
         <div style="font-size:10.5px;color:var(--fg-3);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">Findings breakdown</div>
         <div style="display:flex;flex-direction:column;gap:7px;">
           @php
-            $breakdownItems = [['Dependencies', $trivyTotal, 'var(--sev-low)'], ['Code', $semgrepTotal, '#c69dff'], ['Secrets', $gitleaksTotal, 'var(--sev-critical)'], ['Rules', $rulesTotal, 'var(--accent-hi)'], ['Config', $configTotal, 'var(--sev-medium)'], ['Lifecycle', $lifecycleTotal, 'var(--sev-high)']];
+            $breakdownItems = [['Dependencies', $trivyTotal, 'var(--sev-low)'], ['Code', $semgrepTotal, '#c69dff'], ['Secrets', $gitleaksTotal, 'var(--sev-critical)'], ['Rules', $rulesTotal, 'var(--accent-hi)'], ['Config', $configTotal, 'var(--sev-medium)'], ['Workflows', $workflowsTotal, 'var(--sev-high)'], ['Lifecycle', $lifecycleTotal, 'var(--sev-high)']];
             $breakdownItems[] = ['.env', $envTotal, 'var(--sev-ok)'];
           @endphp
           @foreach ($breakdownItems as [$el, $ev, $ec])
@@ -538,7 +542,7 @@
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:22px;">
       @php
         $engineCards = [
-          ['Dependencies', $trivyTotal, 'var(--sev-low)', 'Trivy · SCA',
+          ['Dependencies', $trivyTotal, 'var(--sev-low)', 'Trivy + OSV-Scanner',
            [['CRIT',$summary['trivy']['CRITICAL']??0],['HIGH',$summary['trivy']['HIGH']??0],['MED',$summary['trivy']['MEDIUM']??0],['LOW',$summary['trivy']['LOW']??0]]],
           ['Code Analysis', $semgrepTotal, '#c69dff', 'Semgrep · SAST',
            [['ERR',$summary['semgrep']['ERROR']??0],['WARN',$summary['semgrep']['WARNING']??0],['INFO',$summary['semgrep']['INFO']??0]]],
@@ -548,6 +552,8 @@
            [['CRIT',$rulesSeverity('CRITICAL')],['HIGH',$rulesSeverity('HIGH')],['MED',$rulesSeverity('MEDIUM')]]],
           ['Config / IaC', $configTotal, 'var(--sev-medium)', 'Trivy · misconfiguration',
            [['CRIT',$summary['trivy_config']['CRITICAL']??0],['HIGH',$summary['trivy_config']['HIGH']??0],['MED',$summary['trivy_config']['MEDIUM']??0],['LOW',$summary['trivy_config']['LOW']??0]]],
+          ['Workflows', $workflowsTotal, 'var(--sev-high)', 'zizmor · GitHub Actions',
+           [['HIGH',$summary['workflows']['HIGH']??0],['MED',$summary['workflows']['MEDIUM']??0],['LOW',$summary['workflows']['LOW']??0]]],
           ['Lifecycle', $lifecycleTotal, 'var(--sev-high)', ($summary['endoflife']['components'] ?? 0).' components · endoflife.date',
            [['EOL',$summary['endoflife']['CRITICAL']??0],['HIGH',$summary['endoflife']['HIGH']??0],['MED',$summary['endoflife']['MEDIUM']??0]]],
           ['.env Audit', $envTotal, 'var(--sev-ok)', empty($results['env_audit']) ? 'no .env file' : 'environment checks',
@@ -610,6 +616,7 @@
             ['Code Analysis (Semgrep)', [['ERROR',$summary['semgrep']['ERROR']??0,'var(--sev-critical)'],['WARNING',$summary['semgrep']['WARNING']??0,'var(--sev-medium)'],['INFO',$summary['semgrep']['INFO']??0,'var(--sev-info)']]],
             ['Rules', [['CRITICAL',$rulesSeverity('CRITICAL'),'var(--sev-critical)'],['HIGH',$rulesSeverity('HIGH'),'var(--sev-high)'],['MEDIUM',$rulesSeverity('MEDIUM'),'var(--sev-medium)'],['LOW',$rulesSeverity('LOW'),'var(--sev-low)']]],
             ['Config / IaC', [['CRITICAL',$summary['trivy_config']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['trivy_config']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['trivy_config']['MEDIUM']??0,'var(--sev-medium)'],['LOW',$summary['trivy_config']['LOW']??0,'var(--sev-low)']]],
+            ['Workflows', [['HIGH',$summary['workflows']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['workflows']['MEDIUM']??0,'var(--sev-medium)'],['LOW',$summary['workflows']['LOW']??0,'var(--sev-low)']]],
             ['Lifecycle', [['CRITICAL',$summary['endoflife']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['endoflife']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['endoflife']['MEDIUM']??0,'var(--sev-medium)']]],
             ['.env Audit', [['CRITICAL',$summary['env_audit']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['env_audit']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['env_audit']['MEDIUM']??0,'var(--sev-medium)'],['INFO',$summary['env_audit']['INFO']??0,'var(--sev-info)']]],
           ];
@@ -639,7 +646,7 @@
         @if ($scanDiff)
           <p style="font-size:11px;color:var(--fg-3);margin-bottom:10px;">{{ $scanDiff['old_date'] }} → {{ $scanDiff['new_date'] }}</p>
           @php
-            $diffRows = [['Total',$scanDiff['total']],['Dependencies',$scanDiff['trivy']],['Code',$scanDiff['semgrep']],['Secrets',$scanDiff['gitleaks']],['Rules',($scanDiff['laravel_rules'] ?? 0) + ($scanDiff['custom_rules'] ?? 0)],['Config',$scanDiff['trivy_config'] ?? 0],['Lifecycle',$scanDiff['endoflife'] ?? 0]];
+            $diffRows = [['Total',$scanDiff['total']],['Dependencies',$scanDiff['trivy']],['Code',$scanDiff['semgrep']],['Secrets',$scanDiff['gitleaks']],['Rules',($scanDiff['laravel_rules'] ?? 0) + ($scanDiff['custom_rules'] ?? 0)],['Config',$scanDiff['trivy_config'] ?? 0],['Workflows',$scanDiff['workflows'] ?? 0],['Lifecycle',$scanDiff['endoflife'] ?? 0]];
             $diffRows[] = ['.env',$scanDiff['env_audit']];
             $diffRows[] = ['Quality',$scanDiff['code_quality'] ?? 0];
           @endphp
@@ -677,7 +684,7 @@
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Dependency vulnerabilities</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $trivyTotal }} results</span>
         <span style="flex:1;"></span>
-        <span style="font-size:11.5px;color:var(--fg-3);">Trivy · public CVEs (NVD, GitHub Advisories, OSV) for every lockfile</span>
+        <span style="font-size:11.5px;color:var(--fg-3);">Trivy + OSV-Scanner · public CVE databases for every lockfile</span>
     </div>
     <div style="padding:4px 32px 32px;">
       @if (!empty($results['trivy']['Results']))
@@ -867,6 +874,19 @@
     </div>
 </div>
 
+{{-- WORKFLOWS (GitHub Actions) ------------------------------------------ --}}
+@elseif ($activeTab === 'workflows')
+<div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
+    @include('livewire.partials.tab-header', ['title' => 'Workflow security', 'count' => $workflowsTotal, 'subtitle' => 'zizmor · GitHub Actions injection, triggers, permissions, pinning'])
+    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+        @forelse ($results['workflows']['findings'] ?? [] as $finding)
+          @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'workflows', 'icon' => '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M6 8.5v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M12 12.5v3"/>'])
+        @empty
+          @include('livewire.partials.empty-state', ['message' => 'No GitHub Actions workflow issues found.'])
+        @endforelse
+    </div>
+</div>
+
 {{-- LIFECYCLE ------------------------------------------------------------ --}}
 @elseif ($activeTab === 'lifecycle')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
@@ -1039,7 +1059,7 @@
         <ol style="margin:0 0 16px;padding-left:20px;font-size:12.5px;color:var(--fg-2);line-height:1.65;display:flex;flex-direction:column;gap:6px;">
             <li><strong style="color:var(--fg-1);">In your browser:</strong> excluded folders (<span class="mono">node_modules</span>, <span class="mono">vendor</span>, <span class="mono">.git</span>, …), media and large binaries are filtered out. They never leave your machine.</li>
             <li><strong style="color:var(--fg-1);">Sent over HTTPS:</strong> the remaining files are compressed and sent to the scanner for this one scan.</li>
-            <li><strong style="color:var(--fg-1);">Scanned in a temporary workspace:</strong> open-source scanners (Trivy, Semgrep, Gitleaks) run against it. Nothing is shared with third parties; only package names and versions are checked against public vulnerability databases.</li>
+            <li><strong style="color:var(--fg-1);">Scanned in a temporary workspace:</strong> open-source scanners (Trivy, OSV-Scanner, Semgrep, Gitleaks, zizmor) run against it. Nothing is shared with third parties; only package names and versions are checked against public vulnerability databases.</li>
             <li><strong style="color:var(--fg-1);">Deleted immediately:</strong> the workspace is deleted the moment the scan finishes, whether it succeeds or fails. Your summary shows the exact time.</li>
             <li><strong style="color:var(--fg-1);">Findings expire:</strong> the results (including short code snippets around each finding) are kept for {{ $webLimits['ttlMinutes'] }} minutes so you can view them, visible only to this browser, then they're gone. Secret values are masked.</li>
         </ol>

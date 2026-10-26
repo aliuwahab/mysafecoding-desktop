@@ -3,6 +3,8 @@
 namespace App\Scanning;
 
 use App\Scanning\Lifecycle\EndOfLifeScanner;
+use App\Scanning\Parsers\OsvScannerResults;
+use App\Scanning\Parsers\ZizmorResults;
 use App\Scanning\Rules\PatternRuleScanner;
 use App\Services\EnvAuditor;
 use App\Services\Scanners\LaravelRuleEngine;
@@ -26,6 +28,7 @@ class ScanEngine
         'env_audit_total',
         'endoflife_total',
         'trivy_config_total',
+        'workflows_total',
     ];
 
     /** @var callable(string, string, string): void */
@@ -49,11 +52,11 @@ class ScanEngine
      *
      * @return list<string>
      */
-    public static function missingTools(): array
+    public static function missingTools(string $group = 'binaries'): array
     {
         $missing = [];
 
-        foreach (config('checkmycode.binaries') as $tool => $binary) {
+        foreach (config('checkmycode.'.$group, []) as $tool => $binary) {
             $found = str_contains($binary, '/')
                 ? is_executable($binary)
                 : Process::env(static::processEnvironment())->run(['which', $binary])->successful();
@@ -141,6 +144,7 @@ class ScanEngine
             'project_type' => $projectType,
             'trivy' => null,
             'trivy_config' => null,
+            'workflows' => null,
             'licenses' => null,
             'semgrep' => null,
             'gitleaks' => null,
@@ -158,6 +162,19 @@ class ScanEngine
 
         if (! in_array('trivy', $missing, true)) {
             $results = $this->runTrivy($results);
+        }
+
+        $missingOptional = static::missingTools('optional_binaries');
+        foreach ($missingOptional as $tool) {
+            $this->log("{$tool} is not installed, skipping that engine.", 'system', 'warn');
+        }
+
+        if (! in_array('osv-scanner', $missingOptional, true)) {
+            $results = $this->runOsvScanner($results);
+        }
+
+        if (! in_array('zizmor', $missingOptional, true)) {
+            $results = $this->runZizmor($results);
         }
 
         if (! in_array('semgrep', $missing, true)) {
@@ -179,6 +196,7 @@ class ScanEngine
             $results = $this->runCodeQuality($results, $projectType);
         }
 
+        $results = $this->dropOverlappingSemgrepFindings($results);
         $results = $this->skipGitIgnoredFiles($results);
 
         if ($this->options['redact_secrets']) {
@@ -313,6 +331,99 @@ class ScanEngine
             'Trivy: %d vulnerable dependencies (%d critical, %d high), %d misconfigurations, %d flagged licenses.',
             $results['summary']['trivy_total'], $vulnCounts['CRITICAL'], $vulnCounts['HIGH'], count($misconfigurations), count($licenses),
         ), 'trivy');
+
+        return $results;
+    }
+
+    // ── OSV-Scanner: second vulnerability database, merged into Dependencies ─
+
+    protected function runOsvScanner(array $results): array
+    {
+        $this->log('OSV-Scanner: checking lockfiles against the OSV.dev vulnerability database (offline copy)...', 'trivy');
+
+        $output = $this->outputDir.'/osv-raw.json';
+        $command = [
+            config('checkmycode.optional_binaries.osv-scanner'), 'scan', 'source', '--recursive',
+            // Compare against a local copy of the database: package names never leave the server.
+            '--offline-vulnerabilities', '--download-offline-databases',
+            // Lockfiles and SBOMs only: the directory plugin would send file hashes to the OSV API.
+            '--x-plugins', 'lockfile', '--x-plugins', 'sbom',
+            '--allow-no-lockfiles',
+            '--format', 'json', '--output-file', $output,
+            '--verbosity', 'error',
+        ];
+        foreach ($this->exclusions as $exclusion) {
+            array_push($command, '--x-exclude', $exclusion);
+        }
+        $command[] = '.';
+
+        $process = $this->runTool($command, 'trivy');
+        $osv = $this->readJson($output);
+
+        if ($osv === null) {
+            $this->log('OSV-Scanner produced no output: '.$this->firstLine($process->errorOutput()), 'trivy', 'warn');
+
+            return $results;
+        }
+
+        $merged = OsvScannerResults::merge($results['trivy'], $osv, $this->projectPath);
+        $results['trivy'] = $merged['trivy'];
+
+        $counts = ['CRITICAL' => 0, 'HIGH' => 0, 'MEDIUM' => 0, 'LOW' => 0];
+        foreach ($results['trivy']['Results'] as $target) {
+            foreach ($target['Vulnerabilities'] ?? [] as $vuln) {
+                $severity = $vuln['Severity'] ?? 'LOW';
+                $counts[$severity] = ($counts[$severity] ?? 0) + 1;
+            }
+        }
+        $results['summary']['trivy'] = $counts;
+        $results['summary']['trivy_total'] = array_sum($counts);
+        $results['meta']['osv_added'] = $merged['added'];
+
+        $this->log($merged['added'] > 0
+            ? "OSV-Scanner: {$merged['added']} additional vulnerable dependencies not in Trivy's database."
+            : 'OSV-Scanner: no additional vulnerabilities (all already reported by Trivy).', 'trivy');
+
+        return $results;
+    }
+
+    // ── zizmor: GitHub Actions workflow security ─────────────────────────────
+
+    protected function runZizmor(array $results): array
+    {
+        if (! is_dir($this->projectPath.'/.github') && ! file_exists($this->projectPath.'/action.yml') && ! file_exists($this->projectPath.'/action.yaml')) {
+            return $results;
+        }
+
+        $this->log('zizmor: auditing GitHub Actions workflows (injection, triggers, permissions, pinning)...', 'workflows');
+
+        $process = $this->runTool([
+            config('checkmycode.optional_binaries.zizmor'),
+            '--offline',        // no GitHub API calls
+            '--no-config',      // a project's zizmor.yml must not switch audits off
+            '--no-exit-codes',
+            '--no-progress',
+            '--format', 'json',
+            '.',
+        ], 'workflows', [
+            // Never hand zizmor a token; an empty one (e.g. from .env) also makes it refuse to run.
+            'GITHUB_TOKEN' => false, 'GH_TOKEN' => false, 'ZIZMOR_GITHUB_TOKEN' => false,
+        ]);
+
+        $zizmor = json_decode(trim($process->output()) ?: 'null', true);
+
+        if (! is_array($zizmor)) {
+            $this->log('zizmor: no auditable workflows ('.$this->firstLine($process->errorOutput()).').', 'workflows', 'warn');
+
+            return $results;
+        }
+
+        $workflows = ZizmorResults::parse($zizmor);
+        $results['workflows'] = $workflows;
+        $results['summary']['workflows'] = $workflows['summary'];
+        $results['summary']['workflows_total'] = $workflows['summary']['total'];
+
+        $this->log("zizmor: {$workflows['summary']['total']} workflow issues ({$workflows['summary']['HIGH']} high).", 'workflows');
 
         return $results;
     }
@@ -545,6 +656,33 @@ class ScanEngine
         return $results;
     }
 
+    /**
+     * The OWASP pack also ships GitHub Actions and Dockerfile rules. When zizmor
+     * and Trivy cover those files, keep their findings and drop Semgrep's copies.
+     */
+    protected function dropOverlappingSemgrepFindings(array $results): array
+    {
+        if (empty($results['semgrep']['results'])) {
+            return $results;
+        }
+
+        $covered = array_filter([
+            $results['workflows'] !== null ? 'yaml.github-actions.' : null,
+            $results['trivy_config'] !== null ? 'dockerfile.' : null,
+        ]);
+
+        $results['semgrep']['results'] = array_values(array_filter(
+            $results['semgrep']['results'],
+            static fn (array $finding): bool => ! collect($covered)->contains(fn (string $prefix): bool => str_starts_with($finding['check_id'] ?? '', $prefix)),
+        ));
+
+        $counts = $this->semgrepCounts($results['semgrep']);
+        $results['summary']['semgrep'] = $counts;
+        $results['summary']['semgrep_total'] = array_sum($counts);
+
+        return $results;
+    }
+
     // ── Gitignored files ─────────────────────────────────────────────────────
 
     /**
@@ -727,11 +865,11 @@ class ScanEngine
     /**
      * @param  list<string>  $command
      */
-    protected function runTool(array $command, string $scanner): \Illuminate\Contracts\Process\ProcessResult
+    protected function runTool(array $command, string $scanner, array $env = []): \Illuminate\Contracts\Process\ProcessResult
     {
         try {
             return Process::path($this->projectPath)
-                ->env(static::processEnvironment())
+                ->env([...static::processEnvironment(), ...$env])
                 ->timeout((int) config('checkmycode.scanner_timeout_seconds', 600))
                 ->run($command);
         } catch (\Illuminate\Process\Exceptions\ProcessTimedOutException $e) {

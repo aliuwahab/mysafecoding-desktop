@@ -10,11 +10,12 @@ Open-source security scanner for the projects developers ship every day. Point i
 
 | Engine | What it checks | Powered by |
 |---|---|---|
-| **Dependencies** | Every lockfile against public CVE databases (NVD, GitHub Advisories, OSV): Composer, npm/yarn/pnpm, pip/Poetry/uv, Bundler, Go modules, Cargo, Maven/Gradle, NuGet, Mix and more | Trivy |
-| **Code** | Language-aware SAST with the Semgrep registry packs for the detected stack, plus CheckMyCode's own rules in `resources/scanners/` | Semgrep |
+| **Dependencies** | Every lockfile against two public vulnerability databases (Trivy's NVD/GitHub Advisories DB and OSV.dev, checked offline), merged without duplicates: Composer, npm/yarn/pnpm, pip/Poetry/uv, Bundler, Go modules, Cargo, Maven/Gradle, NuGet, Mix and more | Trivy + OSV-Scanner |
+| **Code** | Language-aware SAST with the Semgrep registry packs for the detected stack and framework (Django, Flask, FastAPI, React, Node/Express, Kotlin, …) plus OWASP Top 10 rules, and CheckMyCode's own rules in `resources/scanners/` | Semgrep |
 | **Secrets** | API keys, tokens and passwords in files and (desktop/CLI) full git history | Gitleaks |
 | **Rules** | CheckMyCode pattern rules for PHP, Python/Django, JS/TS, Ruby, Go, plus the 20-rule Laravel pack | built in |
 | **Config / IaC** | Dockerfile, Kubernetes, Terraform, CloudFormation and Helm misconfiguration | Trivy |
+| **Workflows** | GitHub Actions security: script injection, dangerous triggers (`pull_request_target`), excessive permissions, unpinned actions | zizmor |
 | **Lifecycle** | Runtimes and frameworks that are out of (or nearly out of) security support | endoflife.date |
 | **.env audit** | Debug mode, weak keys, insecure drivers | built in |
 | **Licenses** | Copyleft and restricted licenses (reported, not graded) | Trivy |

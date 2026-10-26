@@ -14,7 +14,7 @@ class ScanGrade
             $paths,
         ));
 
-        $packs = ['laravel_rules', 'custom_rules', 'env_audit', 'endoflife', 'trivy_config'];
+        $packs = ['laravel_rules', 'custom_rules', 'env_audit', 'endoflife', 'trivy_config', 'workflows'];
 
         return [
             'critical' => $sum(['trivy.CRITICAL', ...array_map(fn ($p) => "{$p}.CRITICAL", $packs)]),
