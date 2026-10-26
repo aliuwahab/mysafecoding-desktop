@@ -79,6 +79,6 @@ return [
     'docker_image' => env('CHECKMYCODE_DOCKER_IMAGE', 'ghcr.io/aliuwahab/checkmycode:latest'),
 
     // Shown in the sidebar: CheckMyCode is free and open source.
-    'github_url' => env('CHECKMYCODE_GITHUB_URL', 'https://github.com/aliuwahab/mysafecoding-desktop'),
+    'github_url' => env('CHECKMYCODE_GITHUB_URL', 'https://github.com/aliuwahab'),
     'sponsor_url' => env('CHECKMYCODE_SPONSOR_URL', 'https://github.com/sponsors/aliuwahab'),
 ];

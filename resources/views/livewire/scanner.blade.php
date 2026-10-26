@@ -103,7 +103,7 @@
         {{-- Free and open source: point people at the repo and sponsorship --}}
         @php
             $osLinks = [
-                ['github', 'Star on GitHub', config('checkmycode.github_url'), 'var(--fg-2)', '<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.9a3.4 3.4 0 0 0-.9-2.6c3-.3 6.2-1.5 6.2-6.7a5.2 5.2 0 0 0-1.4-3.6 4.8 4.8 0 0 0-.1-3.6s-1.2-.3-3.8 1.4a13 13 0 0 0-7 0C6.3 1.3 5.1 1.6 5.1 1.6a4.8 4.8 0 0 0-.1 3.6A5.2 5.2 0 0 0 3.6 8.8c0 5.2 3.2 6.4 6.2 6.7a3.4 3.4 0 0 0-.9 2.6V22"/>'],
+                ['github', 'GitHub', config('checkmycode.github_url'), 'var(--fg-2)', '<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.9a3.4 3.4 0 0 0-.9-2.6c3-.3 6.2-1.5 6.2-6.7a5.2 5.2 0 0 0-1.4-3.6 4.8 4.8 0 0 0-.1-3.6s-1.2-.3-3.8 1.4a13 13 0 0 0-7 0C6.3 1.3 5.1 1.6 5.1 1.6a4.8 4.8 0 0 0-.1 3.6A5.2 5.2 0 0 0 3.6 8.8c0 5.2 3.2 6.4 6.2 6.7a3.4 3.4 0 0 0-.9 2.6V22"/>'],
                 ['sponsor', 'Sponsor', config('checkmycode.sponsor_url'), '#ff6b9a', '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>'],
             ];
         @endphp
@@ -566,12 +566,12 @@
     {{-- Open-source nudge --}}
     <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;margin-bottom:22px;background:color-mix(in srgb,#ff6b9a 6%,var(--bg-2));border:1px solid color-mix(in srgb,#ff6b9a 22%,var(--line-1));border-radius:10px;font-size:12.5px;color:var(--fg-2);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:#ff6b9a;flex-shrink:0;"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg>
-      <span style="flex:1;">CheckMyCode is free and open source. If this scan helped, star the project on GitHub or sponsor its development so it stays free.</span>
+      <span style="flex:1;">CheckMyCode is free and open source. If this scan helped, follow the author on GitHub or sponsor its development so it stays free.</span>
       @if ($webMode)
-        <a href="{{ config('checkmycode.github_url') }}" target="_blank" rel="noopener" style="color:var(--fg-1);text-decoration:none;white-space:nowrap;">★ Star</a>
+        <a href="{{ config('checkmycode.github_url') }}" target="_blank" rel="noopener" style="color:var(--fg-1);text-decoration:none;white-space:nowrap;">Follow on GitHub</a>
         <a href="{{ config('checkmycode.sponsor_url') }}" target="_blank" rel="noopener" style="color:#ff6b9a;font-weight:600;text-decoration:none;white-space:nowrap;">♥ Sponsor</a>
       @else
-        <button wire:click="openLink('github')" style="color:var(--fg-1);white-space:nowrap;">★ Star</button>
+        <button wire:click="openLink('github')" style="color:var(--fg-1);white-space:nowrap;">Follow on GitHub</button>
         <button wire:click="openLink('sponsor')" style="color:#ff6b9a;font-weight:600;white-space:nowrap;">♥ Sponsor</button>
       @endif
     </div>

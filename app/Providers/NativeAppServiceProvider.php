@@ -15,7 +15,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             Menu::make(
                 Menu::link('/', 'New Scan'),
                 Menu::separator(),
-                Menu::link(config('checkmycode.github_url'), 'CheckMyCode on GitHub')
+                Menu::link(config('checkmycode.github_url'), 'Author on GitHub')
                     ->openInBrowser(),
                 Menu::link(config('checkmycode.sponsor_url'), 'Sponsor CheckMyCode')
                     ->openInBrowser(),
