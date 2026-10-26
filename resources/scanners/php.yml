@@ -1,0 +1,94 @@
+rules:
+  - id: mysafecoding.laravel.raw-sql
+    message: Raw SQL helper detected
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: DB::raw(...)
+          - pattern: selectRaw(...)
+          - pattern: whereRaw(...)
+          - pattern: orderByRaw(...)
+
+  - id: mysafecoding.laravel.tls-verification-disabled
+    message: HTTP client TLS verification disabled
+    severity: ERROR
+    languages: [php]
+    pattern: $CLIENT->withoutVerifying(...)
+
+  - id: mysafecoding.laravel.env-outside-config
+    message: env() usage detected outside config
+    severity: WARNING
+    languages: [php]
+    paths:
+      exclude:
+        - '**/config/**'
+    pattern: env(...)
+
+  - id: mysafecoding.laravel.request-all-create
+    message: Request data passed directly into create()
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: $MODEL::create($REQ->all())
+          - pattern: $MODEL::forceCreate($REQ->all())
+          - pattern: $MODEL::create(request()->all())
+          - pattern: $MODEL::forceCreate(request()->all())
+
+  - id: mysafecoding.laravel.request-all-update
+    message: Request data passed directly into update/fill()
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: $MODEL->update($REQ->all())
+          - pattern: $MODEL->fill($REQ->all())
+          - pattern: $MODEL->forceFill($REQ->all())
+          - pattern: $MODEL->update(request()->all())
+          - pattern: $MODEL->fill(request()->all())
+          - pattern: $MODEL->forceFill(request()->all())
+
+  - id: mysafecoding.laravel.model-unguard
+    message: Global mass-assignment protection disabled
+    severity: ERROR
+    languages: [php]
+    pattern: $MODEL::unguard()
+
+  - id: mysafecoding.laravel.empty-guarded
+    message: Model guarded array is empty
+    severity: WARNING
+    languages: [php]
+    pattern: |
+      class $MODEL extends $BASE {
+        ...
+        protected $guarded = [];
+        ...
+      }
+
+  - id: mysafecoding.laravel.gate-before-allow-all
+    message: Gate::before unconditionally allows all abilities
+    severity: ERROR
+    languages: [php]
+    pattern: Gate::before(function ($USER, $ABILITY) { return true; })
+
+  - id: mysafecoding.laravel.csrf-disabled-route
+    message: Route explicitly disables CSRF middleware
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: $ROUTE->withoutMiddleware($MIDDLEWARE)
+      - metavariable-regex:
+          metavariable: $MIDDLEWARE
+          regex: .*(VerifyCsrfToken|ValidateCsrfToken).*
+
+  - id: mysafecoding.laravel.login-using-id-request
+    message: Request-controlled loginUsingId usage detected
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: Auth::loginUsingId($REQ->...)
+          - pattern: auth()->loginUsingId($REQ->...)
+          - pattern: Auth::loginUsingId(request()->...)
+          - pattern: auth()->loginUsingId(request()->...)

@@ -2,10 +2,8 @@
 
 namespace Tests\Unit;
 
-use App\Models\Scan;
-use App\Services\ScannerService;
+use App\Scanning\ProjectDetector;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 
 class ProjectTypeDetectionTest extends TestCase
 {
@@ -14,7 +12,7 @@ class ProjectTypeDetectionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->fixturePath = sys_get_temp_dir().'/laraguard-project-type-'.uniqid();
+        $this->fixturePath = sys_get_temp_dir().'/mysafecoding-project-type-'.uniqid();
         mkdir($this->fixturePath, 0755, true);
     }
 
@@ -30,6 +28,21 @@ class ProjectTypeDetectionTest extends TestCase
         $this->createJson('composer.json', ['require' => ['laravel/framework' => '^12.0']]);
 
         $this->assertSame('laravel', $this->detect());
+    }
+
+    public function test_detects_django_from_manage_py(): void
+    {
+        $this->createFile('requirements.txt', "requests==2.31.0\n");
+        $this->createFile('manage.py', '');
+
+        $this->assertSame('django', $this->detect());
+    }
+
+    public function test_detects_language_of_a_single_file(): void
+    {
+        $this->createFile('handler.py', 'print(1)');
+
+        $this->assertSame('python', ProjectDetector::detect($this->fixturePath.'/handler.py'));
     }
 
     public function test_detects_nextjs_project(): void
@@ -69,12 +82,7 @@ class ProjectTypeDetectionTest extends TestCase
 
     private function detect(): string
     {
-        $method = new ReflectionMethod(ScannerService::class, 'detectProjectType');
-        $method->setAccessible(true);
-        $outputPath = $this->fixturePath.'/.scan-output';
-        mkdir($outputPath, 0755, true);
-
-        return $method->invoke(null, new Scan(['project_path' => $this->fixturePath, 'output_path' => $outputPath]));
+        return ProjectDetector::detect($this->fixturePath);
     }
 
     private function createJson(string $relativePath, array $data): void

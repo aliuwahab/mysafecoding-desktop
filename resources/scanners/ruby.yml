@@ -1,0 +1,40 @@
+rules:
+  - id: mysafecoding.ruby.sql-injection-interpolation
+    message: SQL query with string interpolation
+    severity: ERROR
+    languages: [ruby]
+    pattern-regex: \.(where|find_by_sql|order|joins|having)\(\s*"[^"]*#\{
+
+  - id: mysafecoding.ruby.yaml-load
+    message: YAML.load with user input
+    severity: ERROR
+    languages: [ruby]
+    patterns:
+      - pattern-either:
+          - pattern: YAML.load($INPUT)
+          - pattern: Psych.load($INPUT)
+
+  - id: mysafecoding.ruby.open-redirect
+    message: Redirect to user-supplied URL
+    severity: ERROR
+    languages: [ruby]
+    pattern-either:
+      - pattern: redirect_to params[...]
+      - pattern: redirect_to(params[...], ...)
+
+  - id: mysafecoding.ruby.file-disclosure
+    message: File path constructed from user input
+    severity: ERROR
+    languages: [ruby]
+    pattern-either:
+      - pattern: File.read(params[...])
+      - pattern: File.open(params[...])
+      - pattern: send_file(params[...])
+
+  - id: mysafecoding.ruby.insecure-random
+    message: Insecure random number generator used
+    severity: WARNING
+    languages: [ruby]
+    pattern-either:
+      - pattern: rand(...)
+      - pattern: Random.rand(...)

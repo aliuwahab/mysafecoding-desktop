@@ -1,13 +1,20 @@
-<div style="width:100vw;height:100vh;background:var(--bg-0);color:var(--fg-1);display:flex;flex-direction:column;overflow:hidden;" wire:poll.500ms="pollLogs">
+<div style="width:100vw;height:100vh;background:var(--bg-0);color:var(--fg-1);display:flex;flex-direction:column;overflow:hidden;position:relative;"
+    @if ($webMode) x-data="webScanner(@js(['exclusions' => $exclusions] + $webLimits))" @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="dropped($event)" @endif>
+
+@if ($status === 'running')
+    <div wire:poll.750ms="pollLogs" style="display:none;"></div>
+@endif
 
 {{-- ── Title Bar ──────────────────────────────────────────────────── --}}
 <div style="height:44px;flex-shrink:0;background:var(--bg-0);border-bottom:1px solid var(--line-1);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 14px;gap:12px;user-select:none;" class="drag" data-tauri-drag-region>
 
     {{-- Left: traffic lights + sidebar toggle --}}
     <div style="display:flex;align-items:center;gap:14px;">
+        @unless ($webMode)
         <div class="traffic" style="-webkit-app-region:no-drag;">
             <i class="c"></i><i class="m"></i><i class="x"></i>
         </div>
+        @endunless
         <button wire:click="newScan" title="New scan" style="color:var(--fg-3);display:flex;align-items:center;padding:4px;" class="no-drag">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
         </button>
@@ -21,17 +28,11 @@
     <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;min-width:280px;max-width:480px;font-size:12px;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);flex-shrink:0;"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
         <span class="mono" style="color:var(--fg-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            {{ $projectPath ?: '~/Code/…' }}
+            {{ $projectPath ?: ($webMode ? 'Pick a folder or drop it here…' : '~/Code/…') }}
         </span>
         @php
-            $projectTypeLabels = [
-                'laravel' => 'Laravel', 'symfony' => 'Symfony', 'php' => 'PHP',
-                'nextjs' => 'Next.js', 'nuxt' => 'Nuxt', 'react' => 'React', 'vue' => 'Vue', 'svelte' => 'Svelte', 'angular' => 'Angular', 'nestjs' => 'NestJS', 'express' => 'Express', 'node' => 'Node',
-                'django' => 'Django', 'flask' => 'Flask', 'fastapi' => 'FastAPI', 'python' => 'Python',
-                'rails' => 'Rails', 'ruby' => 'Ruby', 'go' => 'Go', 'rust' => 'Rust', 'phoenix' => 'Phoenix', 'elixir' => 'Elixir', 'spring' => 'Spring', 'java' => 'Java', 'dotnet' => '.NET',
-            ];
             $projectType = $results['project_type'] ?? null;
-            $projectLabel = $projectTypeLabels[$projectType] ?? ($projectPath ? 'Project' : null);
+            $projectLabel = $projectType ? \App\Scanning\ProjectDetector::label($projectType) : ($projectPath ? 'Project' : null);
         @endphp
         @if ($projectPath && $projectLabel)
             <span style="font-size:10px;font-weight:600;color:var(--accent);padding:1px 6px;border-radius:4px;background:color-mix(in srgb,var(--accent) 14%,transparent);letter-spacing:0.04em;">{{ $projectLabel }}</span>
@@ -83,7 +84,7 @@
         </div>
         <div style="display:flex;flex-direction:column;line-height:1;">
             <span class="serif" style="font-size:19px;color:var(--fg-1);letter-spacing:-0.01em;">MySafeCoding</span>
-            <span style="font-size:10.5px;color:var(--fg-3);margin-top:2px;letter-spacing:0.04em;">v1.2 · multi-stack local scanner</span>
+            <span style="font-size:10.5px;color:var(--fg-3);margin-top:2px;letter-spacing:0.04em;">{{ $webMode ? 'open-source web scanner' : 'v2.0 · multi-stack local scanner' }}</span>
         </div>
     </div>
 
@@ -113,11 +114,16 @@
             $today = now()->startOfDay();
             $grouped = ['Today' => [], 'Earlier this week' => [], 'Older' => []];
             foreach ($allScans as $s) {
-                if ($s->created_at->gte($today)) $grouped['Today'][] = $s;
-                elseif ($s->created_at->gte($today->copy()->subDays(5))) $grouped['Earlier this week'][] = $s;
+                if ($s->createdAt->gte($today)) $grouped['Today'][] = $s;
+                elseif ($s->createdAt->gte($today->copy()->subDays(5))) $grouped['Earlier this week'][] = $s;
                 else $grouped['Older'][] = $s;
             }
         @endphp
+        @if ($webMode && $allScans->isEmpty())
+            <div style="padding:10px 12px;font-size:11px;line-height:1.55;color:var(--fg-3);">
+                Scans from this browser session appear here for {{ $webLimits['ttlMinutes'] }} minutes, then they are gone. Export JSON or SARIF to keep a copy.
+            </div>
+        @endif
         @foreach ($grouped as $label => $items)
             @if (count($items) > 0)
                 <div style="margin-bottom:10px;">
@@ -125,16 +131,13 @@
                     @foreach ($items as $scan)
                         @php
                             $sr = $scan->results['summary'] ?? [];
-                            $sc = ($sr['trivy']['CRITICAL'] ?? 0) + ($sr['laravel_rules']['CRITICAL'] ?? 0) + ($sr['gitleaks_total'] ?? 0);
-                            $sh = ($sr['trivy']['HIGH'] ?? 0) + ($sr['semgrep']['ERROR'] ?? 0) + ($sr['laravel_rules']['HIGH'] ?? 0);
-                            $sm = ($sr['trivy']['MEDIUM'] ?? 0) + ($sr['semgrep']['WARNING'] ?? 0) + ($sr['laravel_rules']['MEDIUM'] ?? 0);
-                            $sg = $scan->status === 'completed' ? ($sc > 0 ? 'F' : ($sh > 3 ? 'D' : ($sh > 0 ? 'C' : ($sm > 0 ? 'B' : 'A')))) : '-';
+                            $sg = $scan->status === 'completed' ? ($sr['grade'] ?? \App\Scanning\ScanGrade::fromSummary($sr)) : '-';
                             $gradeVars = ['A'=>'--grade-a','B'=>'--grade-b','C'=>'--grade-c','D'=>'--grade-d','F'=>'--grade-f','-'=>'--fg-4'];
                             $gc = 'var(' . ($gradeVars[$sg] ?? '--fg-4') . ')';
                             $dotColor = match($scan->status) { 'completed'=>'var(--sev-ok)', 'running'=>'var(--accent)', 'failed'=>'var(--sev-critical)', default=>'var(--fg-4)' };
                             $isSelected = $selectedHistoryId === $scan->id;
                         @endphp
-                        <div wire:click="loadScan({{ $scan->id }})"
+                        <div wire:click="loadScan('{{ $scan->id }}')"
                              style="padding:8px 10px;border-radius:7px;background:{{ $isSelected ? 'var(--bg-3)' : 'transparent' }};cursor:pointer;position:relative;transition:background 120ms;"
                              onmouseenter="if(!{{ $isSelected ? 'true' : 'false' }})this.style.background='var(--bg-2)'"
                              onmouseleave="if(!{{ $isSelected ? 'true' : 'false' }})this.style.background='transparent'">
@@ -143,13 +146,13 @@
                             @endif
                             <div style="display:flex;align-items:center;gap:7px;">
                                 <span style="width:5px;height:5px;border-radius:50%;background:{{ $dotColor }};flex-shrink:0;display:block;"></span>
-                                <span class="mono" style="flex:1;font-size:11.5px;color:var(--fg-1);font-weight:{{ $isSelected ? '600' : '500' }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ basename($scan->project_path) }}</span>
+                                <span class="mono" style="flex:1;font-size:11.5px;color:var(--fg-1);font-weight:{{ $isSelected ? '600' : '500' }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $scan->projectName }}</span>
                                 <span style="width:18px;height:18px;border-radius:4px;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:{{ $gc }};background:color-mix(in srgb,{{ $gc }} 14%,transparent);font-family:var(--font-mono);">{{ $sg }}</span>
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;margin-top:3px;padding-left:12px;">
-                                <span style="font-size:10.5px;color:var(--fg-3);">{{ $scan->created_at->diffForHumans() }}</span>
-                                @if ($scan->findings_count > 0)
-                                    <span style="font-size:10.5px;color:var(--fg-3);">· {{ $scan->findings_count }} findings</span>
+                                <span style="font-size:10.5px;color:var(--fg-3);">{{ $scan->createdAt->diffForHumans() }}</span>
+                                @if ($scan->findingsCount > 0)
+                                    <span style="font-size:10.5px;color:var(--fg-3);">· {{ $scan->findingsCount }} findings</span>
                                 @endif
                             </div>
                         </div>
@@ -165,7 +168,7 @@
             <span style="width:6px;height:6px;border-radius:50%;background:var(--sev-ok);display:block;"></span>
             All engines ready
         </span>
-        <span class="mono">local</span>
+        <span class="mono" title="{{ $webMode ? 'Uploaded code is deleted as soon as the scan finishes. No accounts, no database.' : 'Scans run on this machine.' }}">{{ $webMode ? 'web · nothing stored' : 'local' }}</span>
     </div>
 </aside>
 
@@ -181,10 +184,10 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-medium);"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
             </div>
             <h2 style="font-size:18px;font-weight:600;color:var(--fg-1);margin:0 0 8px;">Setup Required</h2>
-            <p style="font-size:13px;color:var(--fg-3);margin:0;">MySafeCoding needs the following tools installed:</p>
+            <p style="font-size:13px;color:var(--fg-3);margin:0;">{{ $webMode ? 'This server is missing scanner tools. Use the Docker image, which ships with all of them.' : 'MySafeCoding needs the following tools installed:' }}</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
-            @foreach (['trivy', 'semgrep', 'gitleaks', 'jq'] as $tool)
+            @foreach (['trivy', 'semgrep', 'gitleaks'] as $tool)
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-3);border-radius:8px;">
                     <span class="mono" style="font-size:13px;color:var(--fg-1);">{{ $tool }}</span>
                     @if (in_array($tool, $missingTools))
@@ -196,7 +199,9 @@
             @endforeach
         </div>
         <div style="display:flex;gap:8px;">
+            @unless ($webMode)
             <button wire:click="installTools" style="flex:1;padding:9px 16px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 1px 0 rgba(0,0,0,0.15);">Install via Homebrew</button>
+            @endunless
             <button wire:click="recheckTools" style="padding:9px 14px;background:var(--bg-3);color:var(--fg-2);border-radius:8px;font-size:13px;border:1px solid var(--line-1);">Recheck</button>
         </div>
     </div>
@@ -205,11 +210,30 @@
 @else
 {{-- ── Scan Config Bar ───────────────────────────────────────────── --}}
 <div style="padding:12px 20px;border-bottom:1px solid var(--line-1);background:var(--bg-1);display:flex;align-items:center;gap:12px;">
-    <button wire:click="selectFolder" style="display:flex;align-items:center;gap:8px;padding:6px 11px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-hi);"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2H3"/><path d="m3 9 1.5 9a2 2 0 0 0 2 2H19a2 2 0 0 0 2-2l1-7H5"/></svg>
-        <span class="mono" style="color:var(--fg-1);font-weight:500;">{{ $projectPath ? basename($projectPath) : 'Select Folder' }}</span>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);"><path d="m6 9 6 6 6-6"/></svg>
-    </button>
+    @php $folderIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-hi);"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2H3"/><path d="m3 9 1.5 9a2 2 0 0 0 2 2H19a2 2 0 0 0 2-2l1-7H5"/></svg>'; @endphp
+    @php $fileIcon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-2);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>'; @endphp
+    @if ($webMode)
+        <input type="file" x-ref="folderInput" webkitdirectory directory multiple style="display:none;" @change="pickedFolder($event)">
+        <input type="file" x-ref="fileInput" multiple style="display:none;" @change="pickedFiles($event)">
+        <button type="button" @click="$refs.folderInput.click()" :disabled="busy" style="display:flex;align-items:center;gap:8px;padding:6px 11px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;">
+            {!! $folderIcon !!}
+            <span class="mono" style="color:var(--fg-1);font-weight:500;">{{ $projectPath ?: 'Select Folder' }}</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button type="button" @click="$refs.fileInput.click()" :disabled="busy" title="Scan individual files" style="display:flex;align-items:center;gap:6px;padding:6px 10px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;color:var(--fg-2);">
+            {!! $fileIcon !!} File
+        </button>
+        <span x-show="files.length" x-cloak class="mono" style="font-size:10.5px;color:var(--fg-3);white-space:nowrap;" x-text="selectionSummary"></span>
+    @else
+        <button wire:click="selectFolder" style="display:flex;align-items:center;gap:8px;padding:6px 11px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;">
+            {!! $folderIcon !!}
+            <span class="mono" style="color:var(--fg-1);font-weight:500;">{{ $projectPath ? basename($projectPath) : 'Select Folder' }}</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button wire:click="selectFile" title="Scan a single file" style="display:flex;align-items:center;gap:6px;padding:6px 10px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;color:var(--fg-2);">
+            {!! $fileIcon !!} File
+        </button>
+    @endif
 
     <div style="flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
         <span style="font-size:10.5px;color:var(--fg-3);text-transform:uppercase;letter-spacing:0.08em;margin-right:2px;white-space:nowrap;">Exclude</span>
@@ -225,10 +249,15 @@
             style="width:70px;font-family:var(--font-mono);font-size:11px;padding:3px 6px;background:transparent;border:1px dashed var(--line-1);border-radius:5px;outline:none;color:var(--fg-1);" />
     </div>
 
-    @if ($status === 'running')
-        <button wire:click="$set('status','idle')" style="display:flex;align-items:center;gap:7px;padding:0 14px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;color:var(--fg-1);">
+    @if ($status === 'running' && ! $webMode)
+        <button wire:click="stopScan" style="display:flex;align-items:center;gap:7px;padding:0 14px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;color:var(--fg-1);">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-critical);"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>
             Stop
+        </button>
+    @elseif ($webMode)
+        <button type="button" @click="upload()" :disabled="!files.length || busy || {{ $status === 'running' ? 'true' : 'false' }}" :style="{ opacity: (!files.length || busy || {{ $status === 'running' ? 'true' : 'false' }}) ? 0.5 : 1 }" style="display:flex;align-items:center;gap:7px;padding:0 16px;height:32px;background:var(--accent);color:#fff;border-radius:7px;font-size:12px;font-weight:600;box-shadow:0 1px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15);">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16l14-8L6 4Z" fill="currentColor"/></svg>
+            <span x-text="busy ? phase : '{{ $status === 'running' ? 'Scanning…' : 'Scan' }}'">Scan</span>
         </button>
     @else
         <button wire:click="startScan" @disabled(!$projectPath) style="display:flex;align-items:center;gap:7px;padding:0 16px;height:32px;background:var(--accent);color:#fff;border-radius:7px;font-size:12px;font-weight:600;box-shadow:0 1px 0 rgba(0,0,0,0.15),inset 0 1px 0 rgba(255,255,255,0.15);">
@@ -246,10 +275,16 @@
     $semgrepTotal = $summary['semgrep_total'] ?? 0;
     $gitleaksTotal = $summary['gitleaks_total'] ?? 0;
     $laravelTotal = $summary['laravel_rules_total'] ?? 0;
+    $customTotal = $summary['custom_rules_total'] ?? 0;
+    $rulesTotal = $laravelTotal + $customTotal;
+    $configTotal = $summary['trivy_config_total'] ?? 0;
+    $lifecycleTotal = $summary['endoflife_total'] ?? 0;
+    $licensesTotal = $summary['licenses_total'] ?? 0;
     $envTotal = $summary['env_audit_total'] ?? 0;
     $codeQualityTotal = $summary['code_quality_total'] ?? 0;
     $scanProjectType = $this->results['project_type'] ?? null;
     $isLaravelProject = $scanProjectType === 'laravel' || $laravelTotal > 0;
+    $rulesSeverity = fn (string $sev) => ($summary['laravel_rules'][$sev] ?? 0) + ($summary['custom_rules'][$sev] ?? 0);
     $tabs = [
         ['id'=>'log',          'label'=>'Log',          'count'=>null,          'color'=>null,
          'icon'=>'<path d="m5 9 3 3-3 3M12 15h7"/><rect x="2" y="4" width="20" height="16" rx="2"/>'],
@@ -261,22 +296,28 @@
          'icon'=>'<path d="m8 6-6 6 6 6M16 6l6 6-6 6M14 4 10 20"/>'],
         ['id'=>'gitleaks',     'label'=>'Secrets',      'count'=>$gitleaksTotal,'color'=>'var(--sev-critical)',
          'icon'=>'<circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9M16 8l3 3M14 10l3 3"/>'],
+        ['id'=>'rules',        'label'=>'Rules',        'count'=>$rulesTotal,   'color'=>'var(--accent-hi)',
+         'icon'=>'<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>'],
+        ['id'=>'config',       'label'=>'Config',       'count'=>$configTotal,  'color'=>'var(--sev-medium)',
+         'icon'=>'<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>'],
+        ['id'=>'lifecycle',    'label'=>'Lifecycle',    'count'=>$lifecycleTotal, 'color'=>'var(--sev-high)',
+         'icon'=>'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'],
         ['id'=>'env_audit',    'label'=>'.env',         'count'=>$envTotal,     'color'=>'var(--sev-ok)',
          'icon'=>'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>'],
         ['id'=>'code_quality', 'label'=>'Quality',      'count'=>$codeQualityTotal, 'color'=>'#c69dff',
          'icon'=>'<path d="m12 3 1.9 5.8h6.1l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8-4.9-3.6h6.1L12 3Z"/>'],
+        ['id'=>'licenses',     'label'=>'Licenses',     'count'=>$licensesTotal, 'color'=>'var(--fg-2)',
+         'icon'=>'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z"/><path d="M20 17v4H6.5A2.5 2.5 0 0 1 4 18.5"/>'],
     ];
-    if ($isLaravelProject) {
-        array_splice($tabs, 5, 0, [[
-            'id'=>'laravel_rules', 'label'=>'Framework', 'count'=>$laravelTotal, 'color'=>'var(--accent-hi)',
-            'icon'=>'<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>',
-        ]]);
-    }
+    // Optional engines only get a tab when they have something to show.
+    $tabs = array_values(array_filter($tabs, fn ($t) => ! in_array($t['id'], ['config', 'lifecycle', 'licenses', 'env_audit'], true) || $t['count'] > 0 || $activeTab === $t['id']
+        || ($t['id'] === 'lifecycle' && ! empty($results['endoflife']['components']))
+        || ($t['id'] === 'env_audit' && ! empty($results['env_audit']))));
 @endphp
-<div style="display:flex;align-items:stretch;border-bottom:1px solid var(--line-1);background:var(--bg-1);padding-left:12px;position:relative;">
+<div class="scroll" style="display:flex;align-items:stretch;border-bottom:1px solid var(--line-1);background:var(--bg-1);padding-left:12px;position:relative;overflow-x:auto;white-space:nowrap;">
     @foreach ($tabs as $tab)
         @php $sel = $activeTab === $tab['id']; @endphp
-        <button wire:click="$set('activeTab','{{ $tab['id'] }}')" style="position:relative;display:flex;align-items:center;gap:7px;padding:10px 13px;font-size:12px;font-weight:500;color:{{ $sel ? 'var(--fg-1)' : 'var(--fg-3)' }};transition:color 160ms;">
+        <button wire:click="$set('activeTab','{{ $tab['id'] }}')" style="flex-shrink:0;position:relative;display:flex;align-items:center;gap:7px;padding:10px 13px;font-size:12px;font-weight:500;color:{{ $sel ? 'var(--fg-1)' : 'var(--fg-3)' }};transition:color 160ms;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ $sel ? '1' : '0.7' }};">{!! $tab['icon'] !!}</svg>
             <span>{{ $tab['label'] }}</span>
             @if ($tab['count'] && $tab['count'] > 0)
@@ -315,6 +356,8 @@
         'laravel_rules'=>['bg'=>'rgba(245,48,3,0.14)', 'fg'=>'var(--accent-hi)'],
         'env_audit'=> ['bg'=>'rgba(61,214,140,0.14)',  'fg'=>'var(--sev-ok)'],
         'code_quality'=> ['bg'=>'rgba(200,150,255,0.14)', 'fg'=>'#c69dff'],
+        'custom_rules'=> ['bg'=>'rgba(245,48,3,0.14)', 'fg'=>'var(--accent-hi)'],
+        'endoflife'=> ['bg'=>'rgba(255,138,61,0.14)', 'fg'=>'var(--sev-high)'],
     ];
 @endphp
 <div style="flex:1;display:flex;flex-direction:column;background:var(--log-bg);min-height:0;">
@@ -350,7 +393,14 @@
             </div>
         @empty
             <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--fg-4);font-size:12px;">
-                <span>Select a project and press <span class="kbd" style="margin:0 3px;">⌘R</span> to scan.</span>
+                @if ($webMode)
+                    <div style="text-align:center;max-width:460px;line-height:1.6;">
+                        <div style="font-size:13px;color:var(--fg-2);margin-bottom:6px;">Pick a project folder or file, or drag it onto this window, then press Scan.</div>
+                        <div style="font-size:11.5px;">Excluded folders never leave your browser. The rest is scanned in a temporary workspace and deleted as soon as the scan finishes. No account, no database, no stored code.</div>
+                    </div>
+                @else
+                    <span>Select a project and press <span class="kbd" style="margin:0 3px;">⌘R</span> to scan.</span>
+                @endif
             </div>
         @endforelse
     </div>
@@ -364,7 +414,8 @@
     $gradeColor = 'var(' . ($gradeVarMap[$grade['grade']] ?? '--fg-3') . ')';
     $gradeLabels = ['A'=>'Excellent','B'=>'Good','C'=>'Fair','D'=>'Poor','F'=>'Critical','-'=>'No data'];
     $gradeLabel = $gradeLabels[$grade['grade']] ?? '—';
-    $grandTotal = $trivyTotal + $semgrepTotal + $gitleaksTotal + $laravelTotal + $envTotal;
+    $grandTotal = $summary['findings_total'] ?? \App\Scanning\ScanEngine::findingsCount($results ?? []);
+    $severityCounts = \App\Scanning\ScanGrade::severityCounts($summary);
 @endphp
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
   <div style="max-width:1180px;margin:0 auto;padding:28px 32px 40px;">
@@ -389,21 +440,22 @@
               No issues found — ship with confidence.
             @else
               <span style="color:var(--accent);">{{ $grandTotal }} findings</span> across local security engines.
-              Address <span style="color:{{ $gradeColor }};">{{ $gitleaksTotal + ($summary['trivy']['CRITICAL'] ?? 0) + ($summary['laravel_rules']['CRITICAL'] ?? 0) }} blockers</span> before deploy.
+              Address <span style="color:{{ $gradeColor }};">{{ $severityCounts['secrets'] + $severityCounts['critical'] }} blockers</span> before deploy.
             @endif
           </div>
         </div>
         @php $ignoredStats = $this->ignoredStats; @endphp
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line-2);display:flex;align-items:center;gap:20px;font-size:11.5px;color:var(--fg-3);">
-          @if ($selectedHistoryId)
-            @php $scanRecord = \App\Models\Scan::find($selectedHistoryId); @endphp
-            @if ($scanRecord)
-              <span>Finished {{ $scanRecord->completed_at?->format('H:i') ?? '—' }}
-              @if ($scanRecord->completed_at && $scanRecord->started_at)
-                · took {{ $scanRecord->started_at->diffInSeconds($scanRecord->completed_at) }}s
-              @endif
-              </span>
+          @if ($scanRecord = $this->selectedScan)
+            <span>Finished {{ $scanRecord->completedAt?->format('H:i') ?? '—' }}
+            @if ($scanRecord->completedAt && $scanRecord->startedAt)
+              · took {{ (int) $scanRecord->startedAt->diffInSeconds($scanRecord->completedAt) }}s
             @endif
+            </span>
+          @endif
+          @if ($webMode)
+            <span style="color:var(--fg-4);">·</span>
+            <span title="Uploaded files were deleted when the scan finished.">code deleted · results expire in {{ $webLimits['ttlMinutes'] }} min</span>
           @endif
           @if ($ignoredStats['total'] > 0)
             <span style="color:var(--fg-4);">·</span>
@@ -417,10 +469,8 @@
         <div style="font-size:10.5px;color:var(--fg-3);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">Findings breakdown</div>
         <div style="display:flex;flex-direction:column;gap:7px;">
           @php
-            $breakdownItems = [['Trivy', $trivyTotal, 'var(--sev-low)'], ['Semgrep', $semgrepTotal, '#c69dff'], ['Gitleaks', $gitleaksTotal, 'var(--sev-critical)']];
-            if ($isLaravelProject) $breakdownItems[] = ['Framework', $laravelTotal, 'var(--accent-hi)'];
+            $breakdownItems = [['Dependencies', $trivyTotal, 'var(--sev-low)'], ['Code', $semgrepTotal, '#c69dff'], ['Secrets', $gitleaksTotal, 'var(--sev-critical)'], ['Rules', $rulesTotal, 'var(--accent-hi)'], ['Config', $configTotal, 'var(--sev-medium)'], ['Lifecycle', $lifecycleTotal, 'var(--sev-high)']];
             $breakdownItems[] = ['.env', $envTotal, 'var(--sev-ok)'];
-            $breakdownItems[] = ['Quality', $codeQualityTotal, '#c69dff'];
           @endphp
           @foreach ($breakdownItems as [$el, $ev, $ec])
             <div style="display:flex;align-items:center;justify-content:space-between;font-size:11.5px;">
@@ -444,19 +494,19 @@
            [['CRIT',$summary['trivy']['CRITICAL']??0],['HIGH',$summary['trivy']['HIGH']??0],['MED',$summary['trivy']['MEDIUM']??0],['LOW',$summary['trivy']['LOW']??0]]],
           ['Code Analysis', $semgrepTotal, '#c69dff', 'Semgrep · SAST',
            [['ERR',$summary['semgrep']['ERROR']??0],['WARN',$summary['semgrep']['WARNING']??0],['INFO',$summary['semgrep']['INFO']??0]]],
-          ['Secrets', $gitleaksTotal, 'var(--sev-critical)', 'Gitleaks',
+          ['Secrets', $gitleaksTotal, 'var(--sev-critical)', ($results['meta']['git_history'] ?? false) ? 'Gitleaks · files + history' : 'Gitleaks · files',
            [['LEAKED',$gitleaksTotal]]],
-          ['.env Audit', $envTotal, 'var(--sev-ok)', '32 vars checked',
+          ['Rules', $rulesTotal, 'var(--accent-hi)', $isLaravelProject ? 'Laravel + custom rule packs' : 'Custom rule pack',
+           [['CRIT',$rulesSeverity('CRITICAL')],['HIGH',$rulesSeverity('HIGH')],['MED',$rulesSeverity('MEDIUM')]]],
+          ['Config / IaC', $configTotal, 'var(--sev-medium)', 'Trivy · misconfiguration',
+           [['CRIT',$summary['trivy_config']['CRITICAL']??0],['HIGH',$summary['trivy_config']['HIGH']??0],['MED',$summary['trivy_config']['MEDIUM']??0],['LOW',$summary['trivy_config']['LOW']??0]]],
+          ['Lifecycle', $lifecycleTotal, 'var(--sev-high)', ($summary['endoflife']['components'] ?? 0).' components · endoflife.date',
+           [['EOL',$summary['endoflife']['CRITICAL']??0],['HIGH',$summary['endoflife']['HIGH']??0],['MED',$summary['endoflife']['MEDIUM']??0]]],
+          ['.env Audit', $envTotal, 'var(--sev-ok)', empty($results['env_audit']) ? 'no .env file' : 'environment checks',
            [['HIGH',$summary['env_audit']['HIGH']??0],['MED',$summary['env_audit']['MEDIUM']??0],['INFO',$summary['env_audit']['INFO']??0]]],
           ['Quality', $codeQualityTotal, '#c69dff', 'Best practices',
            [['FIX',$summary['code_quality']['ERROR']??0],['IMP',$summary['code_quality']['WARNING']??0],['INFO',$summary['code_quality']['INFO']??0]]],
         ];
-        if ($isLaravelProject) {
-          array_splice($engineCards, 3, 0, [[
-            'Framework Rules', $laravelTotal, 'var(--accent-hi)', 'Laravel rule pack',
-            [['CRIT',$summary['laravel_rules']['CRITICAL']??0],['HIGH',$summary['laravel_rules']['HIGH']??0],['MED',$summary['laravel_rules']['MEDIUM']??0]],
-          ]]);
-        }
       @endphp
       @foreach ($engineCards as [$label, $total, $color, $sub, $breakdown])
         <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:10px;padding:14px 14px 12px;display:flex;flex-direction:column;">
@@ -497,14 +547,11 @@
           $sevRows = [
             ['Dependencies (Trivy)', [['CRITICAL',$summary['trivy']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['trivy']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['trivy']['MEDIUM']??0,'var(--sev-medium)'],['LOW',$summary['trivy']['LOW']??0,'var(--sev-low)']]],
             ['Code Analysis (Semgrep)', [['ERROR',$summary['semgrep']['ERROR']??0,'var(--sev-critical)'],['WARNING',$summary['semgrep']['WARNING']??0,'var(--sev-medium)'],['INFO',$summary['semgrep']['INFO']??0,'var(--sev-info)']]],
+            ['Rules', [['CRITICAL',$rulesSeverity('CRITICAL'),'var(--sev-critical)'],['HIGH',$rulesSeverity('HIGH'),'var(--sev-high)'],['MEDIUM',$rulesSeverity('MEDIUM'),'var(--sev-medium)'],['LOW',$rulesSeverity('LOW'),'var(--sev-low)']]],
+            ['Config / IaC', [['CRITICAL',$summary['trivy_config']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['trivy_config']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['trivy_config']['MEDIUM']??0,'var(--sev-medium)'],['LOW',$summary['trivy_config']['LOW']??0,'var(--sev-low)']]],
+            ['Lifecycle', [['CRITICAL',$summary['endoflife']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['endoflife']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['endoflife']['MEDIUM']??0,'var(--sev-medium)']]],
             ['.env Audit', [['CRITICAL',$summary['env_audit']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['env_audit']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['env_audit']['MEDIUM']??0,'var(--sev-medium)'],['INFO',$summary['env_audit']['INFO']??0,'var(--sev-info)']]],
           ];
-          if ($isLaravelProject) {
-            array_splice($sevRows, 2, 0, [[
-              'Framework Rules',
-              [['CRITICAL',$summary['laravel_rules']['CRITICAL']??0,'var(--sev-critical)'],['HIGH',$summary['laravel_rules']['HIGH']??0,'var(--sev-high)'],['MEDIUM',$summary['laravel_rules']['MEDIUM']??0,'var(--sev-medium)']],
-            ]]);
-          }
           $maxSevRow = max([...array_map(fn($r) => array_sum(array_column($r[1],1)), $sevRows), 1]);
         @endphp
         @foreach ($sevRows as [$rl, $rd])
@@ -531,8 +578,7 @@
         @if ($scanDiff)
           <p style="font-size:11px;color:var(--fg-3);margin-bottom:10px;">{{ $scanDiff['old_date'] }} → {{ $scanDiff['new_date'] }}</p>
           @php
-            $diffRows = [['Total',$scanDiff['total']],['Trivy',$scanDiff['trivy']],['Semgrep',$scanDiff['semgrep']],['Gitleaks',$scanDiff['gitleaks']]];
-            if ($isLaravelProject) $diffRows[] = ['Framework',$scanDiff['laravel_rules']];
+            $diffRows = [['Total',$scanDiff['total']],['Dependencies',$scanDiff['trivy']],['Code',$scanDiff['semgrep']],['Secrets',$scanDiff['gitleaks']],['Rules',($scanDiff['laravel_rules'] ?? 0) + ($scanDiff['custom_rules'] ?? 0)],['Config',$scanDiff['trivy_config'] ?? 0],['Lifecycle',$scanDiff['endoflife'] ?? 0]];
             $diffRows[] = ['.env',$scanDiff['env_audit']];
             $diffRows[] = ['Quality',$scanDiff['code_quality'] ?? 0];
           @endphp
@@ -549,8 +595,8 @@
           <p style="font-size:11.5px;color:var(--fg-3);margin-bottom:10px;">Select a previous scan:</p>
           <div style="display:flex;flex-direction:column;gap:6px;">
             @foreach ($this->comparableScans as $cs)
-              <button wire:click="compareScan({{ $cs->id }})" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--line-1);border-radius:7px;font-size:11.5px;color:var(--fg-2);text-align:left;">
-                {{ $cs->created_at->format('M j, H:i') }} — {{ $cs->findings_count }} findings
+              <button wire:click="compareScan('{{ $cs->id }}')" style="padding:8px 10px;background:var(--bg-3);border:1px solid var(--line-1);border-radius:7px;font-size:11.5px;color:var(--fg-2);text-align:left;">
+                {{ $cs->createdAt->format('M j, H:i') }} — {{ $cs->findingsCount }} findings
               </button>
             @endforeach
           </div>
@@ -570,7 +616,7 @@
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Dependency vulnerabilities</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $trivyTotal }} results</span>
         <span style="flex:1;"></span>
-        <span style="font-size:11.5px;color:var(--fg-3);">Trivy · lockfiles and manifests</span>
+        <span style="font-size:11.5px;color:var(--fg-3);">Trivy · public CVEs (NVD, GitHub Advisories, OSV) for every lockfile</span>
     </div>
     <div style="padding:4px 32px 32px;">
       @if (!empty($results['trivy']['Results']))
@@ -591,13 +637,17 @@
                 <span style="display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;color:{{ $sc }};background:color-mix(in srgb,{{ $sc }} 14%,transparent);border:1px solid color-mix(in srgb,{{ $sc }} 24%,transparent);font-family:var(--font-mono);">{{ $vuln['Severity']??'?' }}</span>
                 <span class="mono" style="color:var(--fg-1);">{{ $vuln['VulnerabilityID']??'' }}</span>
                 <span style="display:flex;align-items:center;gap:6px;">
-                  @php $eco = str_contains(strtolower($result['Type']??''), 'composer') ? 'PHP' : 'JS'; $ecoColor = $eco==='PHP' ? 'var(--accent-hi)' : 'var(--sev-low)'; $ecoBg = $eco==='PHP' ? 'rgba(245,48,3,0.14)' : 'rgba(111,179,255,0.14)'; @endphp
+                  @php
+                    $ecoMap = ['composer'=>'PHP','npm'=>'JS','yarn'=>'JS','pnpm'=>'JS','bun'=>'JS','node-pkg'=>'JS','pip'=>'PY','pipenv'=>'PY','poetry'=>'PY','uv'=>'PY','python-pkg'=>'PY','bundler'=>'RB','gemspec'=>'RB','gomod'=>'GO','gobinary'=>'GO','cargo'=>'RS','rustbinary'=>'RS','mix'=>'EX','hex'=>'EX','pom'=>'JAVA','gradle'=>'JAVA','jar'=>'JAVA','sbt'=>'JAVA','nuget'=>'.NET','dotnet-core'=>'.NET','packages-props'=>'.NET','pub'=>'DART','swift'=>'SWIFT','cocoapods'=>'SWIFT','conan'=>'C++'];
+                    $eco = $ecoMap[strtolower($result['Type'] ?? '')] ?? strtoupper(substr($result['Type'] ?? 'PKG', 0, 5));
+                    $ecoColor = $eco==='PHP' ? 'var(--accent-hi)' : 'var(--sev-low)'; $ecoBg = $eco==='PHP' ? 'rgba(245,48,3,0.14)' : 'rgba(111,179,255,0.14)';
+                  @endphp
                   <span style="font-size:9px;font-weight:700;letter-spacing:0.06em;padding:1px 4px;border-radius:3px;background:{{ $ecoBg }};color:{{ $ecoColor }};font-family:var(--font-mono);">{{ $eco }}</span>
                   <span class="mono" style="color:var(--fg-1);">{{ $vuln['PkgName']??'' }}</span>
                 </span>
                 <span class="mono" style="color:var(--fg-3);">{{ $vuln['InstalledVersion']??'' }}</span>
                 <span class="mono" style="color:var(--sev-ok);">→ {{ $vuln['FixedVersion']??'N/A' }}</span>
-                <span style="color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $vuln['Title']??$vuln['Description']??'' }}</span>
+                <span style="color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $result['Target'] ?? '' }}">@if (!empty($vuln['PrimaryURL']))<a href="{{ $vuln['PrimaryURL'] }}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">{{ $vuln['Title']??$vuln['Description']??'' }}</a>@else{{ $vuln['Title']??$vuln['Description']??'' }}@endif</span>
                 @if ($ignored)
                   <div style="display:flex;align-items:center;gap:4px;">
                     <span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:3px;color:var(--sev-medium);background:color-mix(in srgb,var(--sev-medium) 14%,transparent);" title="{{ $this->getIgnoreReason('trivy',$tfp) }}">IGNORED</span>
@@ -682,7 +732,7 @@
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Leaked secrets</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $gitleaksTotal }} results</span>
         <span style="flex:1;"></span>
-        <span style="font-size:11.5px;color:var(--fg-3);">Gitleaks · full git history</span>
+        <span style="font-size:11.5px;color:var(--fg-3);">Gitleaks · {{ ($results['meta']['git_history'] ?? true) ? 'files + full git history' : 'current files' }}</span>
     </div>
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
         @forelse ($results['gitleaks'] ?? [] as $secret)
@@ -705,7 +755,7 @@
               @endif
             </div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;font-size:11px;">
-              @foreach ([['Rule',['mono',true,$secret['RuleID']??'']],['Match',['mono','critical',$secret['Match']??'']],['File',['mono',false,($secret['File']??'').':'.($secret['StartLine']??'')]],['Author',['text',false,($secret['Author']??'').' · '.substr($secret['Commit']??'',0,8)]]] as [$kl,$kv])
+              @foreach ([['Rule',['mono',true,$secret['RuleID']??'']],['Match',['mono','critical',$secret['Match']??'']],['File',['mono',false,($secret['File']??'').':'.($secret['StartLine']??'')]],['Author',['text',false,!empty($secret['Commit']) ? ($secret['Author']??'').' · '.substr($secret['Commit'],0,8) : 'working tree']]] as [$kl,$kv])
                 <div>
                   <div style="font-size:10px;color:var(--fg-3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:3px;">{{ $kl }}</div>
                   <span @class(['mono' => $kv[0]==='mono']) style="color:{{ $kv[1]==='critical'?'var(--sev-critical)':'var(--fg-1)' }};">{{ $kv[2] }}</span>
@@ -722,62 +772,92 @@
     </div>
 </div>
 
-{{-- LARAVEL RULES -------------------------------------------------------- --}}
-@elseif ($activeTab === 'laravel_rules')
+{{-- RULES (Laravel rule pack + MySafeCoding custom rules) --------------- --}}
+@elseif ($activeTab === 'rules')
+@php
+  $ruleFindings = array_merge(
+    array_map(fn ($f) => $f + ['_scanner' => 'laravel_rules'], $results['laravel_rules']['findings'] ?? []),
+    array_map(fn ($f) => $f + ['_scanner' => 'custom_rules'], $results['custom_rules']['findings'] ?? []),
+  );
+@endphp
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    <div style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
-        <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Framework rules</h2>
-        <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $laravelTotal }} results</span>
-        <span style="flex:1;"></span>
-        <span style="font-size:11.5px;color:var(--fg-3);">Laravel rule pack · ORM, routing, config</span>
-    </div>
+    @include('livewire.partials.tab-header', ['title' => 'Rule findings', 'count' => $rulesTotal, 'subtitle' => ($isLaravelProject ? 'Laravel rule pack + ' : '').'MySafeCoding custom rules · '.\App\Scanning\ProjectDetector::label($scanProjectType ?? 'unknown')])
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
-        @forelse ($results['laravel_rules']['findings'] ?? [] as $finding)
-          @php
-            $lfp = ($finding['rule_id']??'').':'.($finding['file_path']??'').':'.($finding['line_start']??'');
-            $lig = $this->isIgnored('laravel_rules',$lfp);
-            $lsevColors = ['CRITICAL'=>'var(--sev-critical)','HIGH'=>'var(--sev-high)','MEDIUM'=>'var(--sev-medium)'];
-            $lsc = $lsevColors[$finding['severity']??'MEDIUM']??'var(--fg-3)';
-          @endphp
-          <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:14px;opacity:{{ $lig?'0.45':'1' }};">
-            <div style="width:34px;height:34px;flex-shrink:0;border-radius:7px;background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 26%,transparent);display:grid;place-items:center;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-hi);"><path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/></svg>
-            </div>
-            <div style="flex:1;min-width:0;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-                <span style="display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;color:{{ $lsc }};background:color-mix(in srgb,{{ $lsc }} 14%,transparent);border:1px solid color-mix(in srgb,{{ $lsc }} 24%,transparent);font-family:var(--font-mono);">{{ $finding['severity']??'MEDIUM' }}</span>
-                <span class="mono" style="font-size:11px;color:var(--fg-3);">{{ $finding['rule_id']??'' }}</span>
-                <span style="font-size:13px;color:var(--fg-1);font-weight:600;">{{ $finding['title']??'' }}</span>
-              </div>
-              <div style="font-size:12.5px;color:var(--fg-2);line-height:1.5;margin-top:4px;">{{ $finding['description']??'' }}</div>
-              <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--fg-3);margin-top:6px;">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
-                <span class="mono" style="color:var(--fg-2);">{{ $finding['file_path']??'' }}:{{ $finding['line_start']??'' }}</span>
-              </div>
-              @if (!empty($finding['code_snippet']))
-                <pre style="margin-top:8px;padding:8px 12px;background:var(--log-bg);border:1px solid var(--line-2);border-radius:6px;font-size:11.5px;color:var(--fg-1);overflow-x:auto;white-space:pre-wrap;">{{ $finding['code_snippet'] }}</pre>
-              @endif
-              @if (!empty($finding['fix_guidance']))
-                <div style="margin-top:6px;padding:8px 12px;background:color-mix(in srgb,var(--sev-ok) 8%,transparent);border:1px solid color-mix(in srgb,var(--sev-ok) 20%,transparent);border-radius:6px;font-size:11.5px;color:var(--sev-ok);">
-                  <strong>Fix:</strong> {{ $finding['fix_guidance'] }}
-                </div>
-              @endif
-            </div>
-            @if ($lig)
-              <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-                <span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:3px;color:var(--sev-medium);background:color-mix(in srgb,var(--sev-medium) 14%,transparent);" title="{{ $this->getIgnoreReason('laravel_rules',$lfp) }}">IGNORED</span>
-                <button wire:click="unignoreFinding('laravel_rules','{{ $lfp }}')" style="font-size:11px;padding:4px 8px;background:var(--bg-3);border:1px solid var(--line-1);border-radius:5px;color:var(--fg-2);">Remove</button>
-              </div>
-            @else
-              <button wire:click="promptIgnore('laravel_rules:{{ $lfp }}')" style="font-size:11px;padding:4px 10px;background:var(--bg-3);border:1px solid var(--line-1);border-radius:5px;color:var(--fg-2);flex-shrink:0;">Ignore</button>
-            @endif
-          </div>
+        @forelse ($ruleFindings as $finding)
+          @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => $finding['_scanner'], 'icon' => '<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>'])
         @empty
-          <div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--sev-ok);flex-direction:column;gap:8px;">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5;"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>
-            <span style="font-size:13px;">No framework rule issues found.</span>
-          </div>
+          @include('livewire.partials.empty-state', ['message' => 'No rule findings.'])
         @endforelse
+    </div>
+</div>
+
+{{-- CONFIG / IaC -------------------------------------------------------- --}}
+@elseif ($activeTab === 'config')
+<div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
+    @include('livewire.partials.tab-header', ['title' => 'Configuration & IaC', 'count' => $configTotal, 'subtitle' => 'Trivy · Dockerfile, Kubernetes, Terraform, CloudFormation, Helm'])
+    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+        @forelse ($results['trivy_config']['findings'] ?? [] as $finding)
+          @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'trivy_config', 'icon' => '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4"/>'])
+        @empty
+          @include('livewire.partials.empty-state', ['message' => 'No misconfigurations found.'])
+        @endforelse
+    </div>
+</div>
+
+{{-- LIFECYCLE ------------------------------------------------------------ --}}
+@elseif ($activeTab === 'lifecycle')
+<div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
+    @include('livewire.partials.tab-header', ['title' => 'Lifecycle support', 'count' => $lifecycleTotal, 'subtitle' => 'endoflife.date · runtimes and frameworks'])
+    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+        @foreach ($results['endoflife']['findings'] ?? [] as $finding)
+          @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'endoflife', 'icon' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'])
+        @endforeach
+        @if (!empty($results['endoflife']['components']))
+          <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;margin-top:6px;">
+            <div style="display:grid;grid-template-columns:180px 120px 1fr 170px 140px;padding:10px 16px;border-bottom:1px solid var(--line-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);background:var(--bg-1);">
+              <span>Component</span><span>Version</span><span>Status</span><span>Security support ends</span><span>Latest</span>
+            </div>
+            @foreach ($results['endoflife']['components'] as $component)
+              @php $supported = ($component['status'] ?? '') === 'supported'; @endphp
+              <div style="display:grid;grid-template-columns:180px 120px 1fr 170px 140px;padding:10px 16px;align-items:center;border-bottom:1px solid var(--line-2);font-size:12px;">
+                <span style="color:var(--fg-1);">{{ $component['label'] ?? $component['product'] }}</span>
+                <span class="mono" style="color:var(--fg-2);">{{ $component['detected_version'] ?? '' }}</span>
+                <span style="color:{{ $supported ? 'var(--sev-ok)' : 'var(--sev-high)' }};">{{ $component['status_label'] ?? '—' }}</span>
+                <span class="mono" style="color:var(--fg-3);">{{ $component['security_support_ends_at'] ?? '—' }}</span>
+                <span class="mono" style="color:var(--fg-3);">{{ $component['latest_release'] ?? '—' }}</span>
+              </div>
+            @endforeach
+          </div>
+        @else
+          @include('livewire.partials.empty-state', ['message' => 'No supported runtimes or frameworks detected for lifecycle checks.'])
+        @endif
+    </div>
+</div>
+
+{{-- LICENSES ------------------------------------------------------------- --}}
+@elseif ($activeTab === 'licenses')
+<div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
+    @include('livewire.partials.tab-header', ['title' => 'Flagged licenses', 'count' => $licensesTotal, 'subtitle' => 'Trivy · copyleft and restricted licenses (not part of the grade)'])
+    <div style="padding:16px 32px 32px;">
+      @if (!empty($results['licenses']['findings']))
+        <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
+          <div style="display:grid;grid-template-columns:84px 1fr 200px 140px 1fr;padding:10px 16px;border-bottom:1px solid var(--line-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);background:var(--bg-1);">
+            <span>Severity</span><span>Package</span><span>License</span><span>Category</span><span>Source</span>
+          </div>
+          @foreach ($results['licenses']['findings'] as $license)
+            @php $lc = ($license['severity'] ?? '') === 'CRITICAL' ? 'var(--sev-critical)' : 'var(--sev-high)'; @endphp
+            <div style="display:grid;grid-template-columns:84px 1fr 200px 140px 1fr;padding:10px 16px;align-items:center;gap:8px;border-bottom:1px solid var(--line-2);font-size:12px;">
+              <span style="display:inline-flex;font-size:9.5px;font-weight:700;letter-spacing:0.08em;padding:2px 6px;border-radius:3px;color:{{ $lc }};background:color-mix(in srgb,{{ $lc }} 14%,transparent);font-family:var(--font-mono);width:fit-content;">{{ $license['severity'] ?? '' }}</span>
+              <span class="mono" style="color:var(--fg-1);">{{ $license['package'] ?? '' }}</span>
+              <span class="mono" style="color:var(--fg-2);">{{ $license['license'] ?? '' }}</span>
+              <span style="color:var(--fg-3);">{{ $license['category'] ?? '' }}</span>
+              <span class="mono" style="color:var(--fg-3);">{{ $license['file_path'] ?? '' }}</span>
+            </div>
+          @endforeach
+        </div>
+      @else
+        @include('livewire.partials.empty-state', ['message' => 'No flagged licenses.'])
+      @endif
     </div>
 </div>
 
@@ -863,6 +943,21 @@
 
 </main>
 </div>{{-- end body row --}}
+
+@if ($webMode)
+{{-- ── Web: drop zone + upload errors ──────────────────────────────── --}}
+<div x-show="dragging" x-cloak style="position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--bg-0) 80%,transparent);backdrop-filter:blur(3px);pointer-events:none;">
+    <div style="padding:36px 48px;border:2px dashed var(--accent);border-radius:16px;text-align:center;background:var(--bg-2);">
+        <div class="serif" style="font-size:26px;color:var(--fg-1);margin-bottom:6px;">Drop a folder or files to scan</div>
+        <div style="font-size:12px;color:var(--fg-3);">Excluded folders are skipped in your browser. Nothing is stored.</div>
+    </div>
+</div>
+<div x-show="error" x-cloak style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:45;max-width:560px;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-2);border:1px solid color-mix(in srgb,var(--sev-critical) 40%,var(--line-1));border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.4);font-size:12.5px;color:var(--fg-1);">
+    <span style="color:var(--sev-critical);">✗</span>
+    <span x-text="error" style="flex:1;"></span>
+    <button type="button" @click="error = null" style="color:var(--fg-3);">×</button>
+</div>
+@endif
 
 {{-- ── Ignore modal ─────────────────────────────────────────────────── --}}
 @if ($pendingIgnoreKey)

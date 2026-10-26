@@ -29,9 +29,16 @@ class SarifExporter
             $sarifResults[] = $result;
         }
 
-        foreach (static::frameworkRuleFindings($results) as [$rule, $result]) {
-            static::addRule($rules, $rule);
-            $sarifResults[] = $result;
+        foreach ([
+            'laravel_rules' => ['framework', 'Framework Rules'],
+            'custom_rules' => ['custom', 'Custom Rules'],
+            'trivy_config' => ['config', 'Trivy Config'],
+            'endoflife' => ['lifecycle', 'Lifecycle Support'],
+        ] as $key => [$prefix, $label]) {
+            foreach (static::ruleFindings($results, $key, $prefix, $label) as [$rule, $result]) {
+                static::addRule($rules, $rule);
+                $sarifResults[] = $result;
+            }
         }
 
         foreach (static::envAuditFindings($results) as [$rule, $result]) {
@@ -45,7 +52,7 @@ class SarifExporter
             'runs' => [[
                 'tool' => [
                     'driver' => [
-                        'name' => 'MySafeCoding Desktop',
+                        'name' => 'MySafeCoding',
                         'informationUri' => 'https://www.mysafecoding.com/',
                         'rules' => array_values($rules),
                     ],
@@ -53,7 +60,7 @@ class SarifExporter
                 'results' => $sarifResults,
                 'properties' => [
                     'projectType' => $results['project_type'] ?? 'unknown',
-                    'generatedBy' => 'mysafecoding-desktop',
+                    'generatedBy' => 'mysafecoding',
                 ],
             ]],
         ];
@@ -145,23 +152,26 @@ class SarifExporter
         return $findings;
     }
 
-    private static function frameworkRuleFindings(array $results): array
+    /**
+     * Rule-style findings share one shape: rule_id, title, severity, description, file_path, line_start.
+     */
+    private static function ruleFindings(array $results, string $key, string $prefix, string $label): array
     {
         $findings = [];
 
-        foreach ($results['laravel_rules']['findings'] ?? [] as $finding) {
-            $id = 'framework.'.static::slug($finding['rule_id'] ?? 'rule');
-            $message = $finding['description'] ?? $finding['title'] ?? 'Framework rule finding';
+        foreach ($results[$key]['findings'] ?? [] as $finding) {
+            $id = $prefix.'.'.static::slug($finding['rule_id'] ?? 'rule');
+            $message = $finding['description'] ?? $finding['title'] ?? $label.' finding';
 
             $findings[] = [
-                static::rule($id, $finding['title'] ?? $finding['rule_id'] ?? 'Framework rule', $message, 'Framework Rules'),
+                static::rule($id, $finding['title'] ?? $finding['rule_id'] ?? $label, $message, $label),
                 static::result(
                     $id,
                     static::level($finding['severity'] ?? 'MEDIUM'),
                     $message,
                     $finding['file_path'] ?? 'unknown',
                     (int) ($finding['line_start'] ?? 1),
-                    ['scanner' => 'framework_rules', 'category' => $finding['category'] ?? null],
+                    ['scanner' => $key, 'category' => $finding['category'] ?? null],
                 ),
             ];
         }

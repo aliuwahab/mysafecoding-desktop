@@ -15,7 +15,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             Menu::make(
                 Menu::link('/', 'New Scan'),
                 Menu::separator(),
-                Menu::link('https://github.com/aliuwahab/laraguard-desktop', 'Desktop on GitHub')
+                Menu::link('https://github.com/aliuwahab/mysafecoding-desktop', 'Desktop on GitHub')
                     ->openInBrowser(),
             )->label('Scan'),
             Menu::edit(),

@@ -1,191 +1,108 @@
 # MySafeCoding
 
-MySafeCoding is a NativePHP desktop app for scanning local projects across popular languages and frameworks.
+Open-source security scanner for the projects developers ship every day. Point it at a folder (or a single file) and it finds:
 
-It wraps the bundled `mysafecoding` CLI scripts in a desktop UI so a developer can:
+| Engine | What it checks | Powered by |
+|---|---|---|
+| **Dependencies** | Every lockfile against public CVE databases (NVD, GitHub Advisories, OSV): Composer, npm/yarn/pnpm, pip/Poetry/uv, Bundler, Go modules, Cargo, Maven/Gradle, NuGet, Mix and more | Trivy |
+| **Code** | Language-aware SAST with the Semgrep registry packs for the detected stack, plus MySafeCoding's own rules in `resources/scanners/` | Semgrep |
+| **Secrets** | API keys, tokens and passwords in files and (desktop/CLI) full git history | Gitleaks |
+| **Rules** | MySafeCoding pattern rules for PHP, Python/Django, JS/TS, Ruby, Go, plus the 20-rule Laravel pack | built in |
+| **Config / IaC** | Dockerfile, Kubernetes, Terraform, CloudFormation and Helm misconfiguration | Trivy |
+| **Lifecycle** | Runtimes and frameworks that are out of (or nearly out of) security support | endoflife.date |
+| **.env audit** | Debug mode, weak keys, insecure drivers | built in |
+| **Licenses** | Copyleft and restricted licenses (reported, not graded) | Trivy |
+| **Quality** | Best-practice suggestions (reported, not graded) | Semgrep |
 
-- pick a project folder
-- run a security scan without touching the terminal
-- watch scan output in real time
-- inspect Trivy, Semgrep, Gitleaks, framework-specific, environment, and quality results
-- keep local scan history
-- export results as JSON
+Supported stacks: PHP (Laravel, Symfony), JavaScript/TypeScript (Next.js, Nuxt, React, Vue, Svelte, Angular, NestJS, Express), Python (Django, Flask, FastAPI), Ruby (Rails), Go, Rust, Elixir (Phoenix), Java (Spring) and .NET.
 
-## Product Direction
+## One engine, three ways to run it
 
-This repository is the local desktop implementation of the broader MySafeCoding vision documented in [WARP.md](./WARP.md).
+Desktop, web and CLI all run the same pipeline (`app/Scanning/ScanEngine.php`), so results match wherever you scan.
 
-Today, MySafeCoding is the fast local scanner experience:
+### 1. Web: hosted, anonymous, nothing stored
 
-- local-first
-- zero SaaS dependency
-- SQLite-backed
-- NativePHP desktop shell
-- Laravel-powered Livewire UI
-- multi-language scanning for PHP, JavaScript/TypeScript, Python, Ruby, Go, Rust, Elixir, Java, and .NET
-- popular framework detection for Laravel, Symfony, Next.js, Nuxt, React, Vue, Svelte, Angular, NestJS, Express, Django, Flask, FastAPI, Rails, Phoenix, and Spring
+Pick a folder or file in the browser (or drag it in) and press **Scan**.
 
-The larger MySafeCoding direction is a hosted security platform for teams, including:
+- Excluded folders (`node_modules`, `vendor`, …) are filtered **in the browser** and never uploaded.
+- The rest is zipped client-side, uploaded, scanned in a temporary workspace and **deleted as soon as the scan finishes**.
+- There are no accounts and no database records. Results live in a short-lived cache (60 minutes by default), visible only to the browser session that started the scan. Secret values are redacted.
+- Git history is not uploaded, so secrets are checked in current files only. Use desktop or CLI for history.
 
-- hosted dashboard
-- APIs and webhooks
-- nightly scanning
-- team workflows
-- hosted custom rule intelligence
-- compliance and reporting
-
-This app is the practical first surface: a downloadable desktop scanner that proves the workflow end to end.
-
-## How It Works
-
-The app is a Laravel application running inside NativePHP/Electron.
-
-### Scan flow
-
-1. The user selects a project folder in the desktop UI.
-2. A `Scan` record is created in SQLite.
-3. The app starts the bundled bash scanner in `resources/cli/mysafecoding-scan.sh`.
-4. NativePHP child-process events stream logs back into the app.
-5. Raw scanner output is written into `resources/cli/ls-output/...`.
-6. The app parses the JSON artifacts and stores normalized results on the scan record.
-7. The Livewire UI polls for updates and switches to the summary/results tabs when the scan completes.
-
-### Current engines
-
-- Trivy for dependency vulnerability scanning
-- Semgrep for static analysis
-- Gitleaks for secrets detection
-- framework-specific custom rules when a supported rule pack is available
-- `.env` auditing when an environment file is present
-- Semgrep-backed code quality suggestions
-- `jq` for parsing and summary generation in the bundled scripts
-
-## Tech Stack
-
-- Laravel 12
-- NativePHP Desktop
-- Livewire 4
-- Tailwind CSS 4
-- SQLite
-- Electron (via NativePHP)
-
-## Project Structure
-
-```text
-app/
-  Livewire/Scanner.php          Main desktop UI state + polling
-  Models/Scan.php               Scan history and parsed results
-  Models/ScanLog.php            Per-line process logs
-  Services/ScannerService.php   Child-process orchestration + result parsing
-  Providers/NativeAppServiceProvider.php
-
-resources/
-  cli/
-    mysafecoding-scan.sh
-    mysafecoding-setup.sh
-    mysafecoding-inspect.sh
-  views/livewire/scanner.blade.php
-
-database/
-  migrations/                   Scan and scan_log schema
-  database.sqlite               Standard Laravel/dev database
-  nativephp.sqlite              NativePHP desktop runtime database
-
-bin/
-  native-run                    Starts the app with Homebrew php@8.4 and runs native migrations
-```
-
-## Running Locally
-
-### Requirements
-
-- macOS
-- Homebrew
-- `php@8.4`
-- Node.js / npm
-- Composer
-
-Scanner dependencies:
-
-- `trivy`
-- `semgrep`
-- `gitleaks`
-- `jq`
-
-### Install app dependencies
+Self-host it:
 
 ```bash
-composer install
-npm install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate --force
+docker compose up -d          # → http://localhost:8080
+# or
+docker run --rm -p 8080:8080 ghcr.io/aliuwahab/mysafecoding web
 ```
 
-### Start the desktop app
+Limits are set with environment variables (see `.env.example`): upload size, file count, scans per hour per IP, result TTL, and concurrent workers (`MYSAFECODING_WORKERS`).
 
-Use the provided launcher:
+### 2. Desktop: NativePHP app
+
+Native folder/file picker, SQLite scan history, compare with previous scans, ignore findings, and full git-history secret scanning.
 
 ```bash
+composer install && npm install && npm run build
+cp .env.example .env && php artisan key:generate && php artisan migrate --force
 ./bin/native-run
 ```
 
-This launcher:
+On first launch the app checks for `trivy`, `semgrep` and `gitleaks` and can install them with Homebrew.
 
-- uses Homebrew `php@8.4`
-- runs `php artisan native:migrate --force`
-- starts `php artisan native:run --no-queue`
+### 3. CLI: local or CI
 
-## Data Storage
+```bash
+# Docker: no local toolchain needed
+docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/mysafecoding scan /src
 
-There are two SQLite databases in development:
+# From a checkout (needs PHP 8.2+, trivy, semgrep, gitleaks)
+./bin/mysafecoding scan ~/Code/my-app
+./bin/mysafecoding scan . --format sarif --output report.sarif --fail-on high
+./bin/mysafecoding scan . --exclude tests --exclude fixtures --offline
+```
 
-- `database/database.sqlite`
-  Used by standard Laravel commands and tests.
-- `database/nativephp.sqlite`
-  Used by the NativePHP desktop runtime.
+| Option | |
+|---|---|
+| `--exclude <path>` | Skip a folder or file (repeatable). Default exclusions apply unless `--no-defaults`. |
+| `--format text\|json\|sarif` | Report printed at the end (or written with `--output <file>`). |
+| `--fail-on critical\|high\|medium\|any` | Exit with code 1 when findings reach that severity. Good for CI. |
+| `--output-dir <dir>` | Keep raw scanner artifacts and `results.json`. |
+| `--no-history` | Skip git-history secret scanning. |
+| `--offline` | Skip endoflife.date lookups. Trivy and Semgrep still need their databases and rules. |
 
-If you add migrations for app state used in the desktop app, they must be available to both environments. The launcher already runs `native:migrate` before startup.
+The desktop app's **CI YAML** button generates a GitHub Actions workflow that runs the Docker image on every PR and uploads SARIF to GitHub code scanning.
 
-## Current Features
+## How it works
 
-- Native folder picker
-- exclusion list management
-- scan history sidebar
-- real-time log streaming
-- summary tab with aggregated counts
-- Trivy / Semgrep / Gitleaks result tabs
-- Framework Rules tab when a framework-specific rule pack is available
-- .env Audit and Code Quality tabs
-- JSON and SARIF export
-- GitHub Actions workflow generator
-- first-run dependency check screen
-- hosted scan CTA that opens https://www.mysafecoding.com/
+```text
+app/Scanning/
+  ScanEngine.php            The pipeline: Trivy → Semgrep → Gitleaks → rule packs → .env → lifecycle → quality
+  ProjectDetector.php       Stack detection (Laravel, Next.js, Django, Spring, …)
+  SemgrepRulesets.php       Registry packs + custom rules per stack
+  ScanGrade.php             A–F security grade
+  Rules/PatternRuleScanner  Cross-language pattern rules (shared with the hosted platform)
+  Lifecycle/                endoflife.date support checks
+  Store/                    DatabaseScanStore (desktop) · EphemeralScanStore (web: cache + session)
+  Web/ArchiveExtractor      Safe upload extraction (zip-slip, symlink, size and count limits)
+app/Console/Commands/ScanCommand.php   `mysafecoding:scan`: CLI, Docker and the desktop child process
+app/Jobs/RunWebScan.php                Web: scan, then delete the uploaded code
+app/Livewire/Scanner.php               The UI for both desktop and web
+resources/scanners/*.yml               MySafeCoding custom Semgrep rules
+resources/js/web-scan.js               Browser folder picking, filtering, zipping, upload
+```
 
-## CI Workflow
+- **Desktop** runs `php artisan mysafecoding:scan --machine` as a NativePHP child process and streams its log lines into SQLite.
+- **Web** extracts the upload, queues `RunWebScan`, and the UI polls the cache for logs and results.
+- **CLI** calls the engine directly.
 
-Use the `CI YAML` button in the desktop app to generate a GitHub Actions workflow for the selected project. The generated workflow installs Trivy, Semgrep, Gitleaks, and jq, downloads the MySafeCoding scanner script, runs the scan in CI, and uploads raw scan artifacts.
+## Development
 
-## SARIF Export
+```bash
+composer run dev     # desktop UI in the browser (php artisan serve + vite)
+composer run web     # web mode: server + queue worker + vite
+php artisan test
+```
 
-Use the `SARIF` button after a scan completes to export results in SARIF 2.1.0 format for tools that support standardized security findings.
-
-## Notes
-
-- The desktop app is intentionally single-user and local-first right now.
-- The scanner scripts are bundled with the app so the workflow is version-locked.
-- The terminal may show NativePHP scheduler/dev-console noise in development; that is expected and does not mean the scan failed.
-
-## Next Product Layer
-
-The next step after this desktop app is moving upward into the MySafeCoding platform described in `WARP.md`:
-
-- shared scan API
-- hosted team dashboard
-- repository integrations
-- scheduled scans
-- hosted custom rules engine
-- compliance reporting
-- billing and organization workflows
-
-This repo represents the local scanner foundation for that roadmap.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) to add a stack, a rule or an export format, and [WARP.md](./WARP.md) for the roadmap.

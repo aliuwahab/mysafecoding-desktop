@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: zip, pdo_sqlite, pcntl
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: composer install --no-interaction --prefer-dist
+      - run: npm ci && npm run build
+      - run: cp .env.example .env && php artisan key:generate
+      - run: php artisan test
+
+      - name: Validate custom Semgrep rules
+        run: |
+          python3 -m pip install --quiet semgrep
+          for rules in resources/scanners/*.yml; do semgrep scan --validate --config "$rules" --metrics off; done

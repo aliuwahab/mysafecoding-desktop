@@ -1,0 +1,53 @@
+rules:
+  - id: mysafecoding.js.prototype-pollution
+    message: Deep merge of request data into an object can allow prototype pollution (__proto__ / constructor keys)
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: $LODASH.merge($TARGET, $REQ.body)
+      - pattern: $LODASH.merge($TARGET, $REQ.query)
+      - pattern: $LODASH.defaultsDeep($TARGET, $REQ.body)
+      - pattern: Object.assign($TARGET, $REQ.body)
+      - pattern: Object.assign($TARGET, $REQ.query)
+
+  - id: mysafecoding.js.dangerously-set-inner-html
+    message: dangerouslySetInnerHTML renders raw HTML; sanitize the value (e.g. DOMPurify) or render text instead
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-regex: dangerouslySetInnerHTML\s*=\s*\{\s*\{\s*__html
+
+  - id: mysafecoding.js.sql-injection-template
+    message: SQL query built with a template literal; use parameterized queries instead
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: $DB.query(`...${$VAR}...`, ...)
+      - pattern: $DB.execute(`...${$VAR}...`, ...)
+      - pattern: $DB.raw(`...${$VAR}...`, ...)
+
+  - id: mysafecoding.js.cors-all-origins
+    message: CORS configured to allow all origins
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: 'cors({..., origin: "*", ...})'
+      - pattern: '$RES.setHeader("Access-Control-Allow-Origin", "*")'
+      - pattern: '$RES.header("Access-Control-Allow-Origin", "*")'
+      - pattern: '$RES.set("Access-Control-Allow-Origin", "*")'
+
+  - id: mysafecoding.js.jwt-none-algorithm
+    message: JWT verification accepts the 'none' algorithm, allowing unsigned tokens
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern: '$JWT.verify($TOKEN, $SECRET, {..., algorithms: [..., "none", ...], ...}, ...)'
+
+  - id: mysafecoding.js.express-no-helmet
+    message: Express app created without helmet security headers
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: $APP = express()
+      - pattern-not-inside: |
+          $APP = express();
+          ...
+          $APP.use(helmet(...));

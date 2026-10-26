@@ -2,11 +2,15 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "mysafecoding/desktop",
     "type": "project",
-    "description": "MySafeCoding desktop security scanner.",
+    "description": "MySafeCoding: open-source security scanner for desktop, web and CLI.",
     "keywords": [
         "security",
         "scanner",
-        "nativephp"
+        "sast",
+        "sca",
+        "secrets",
+        "nativephp",
+        "cli"
     ],
     "license": "MIT",
     "require": {
@@ -76,6 +80,14 @@
         "native:dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -k -c \"#93c5fd,#c4b5fd\" \"php artisan native:run --no-interaction\" \"npm run dev\" --names=app,vite"
+        ],
+        "web": [
+            "Composer\\Config::disableProcessTimeout",
+            "npx concurrently -c \"#93c5fd,#fdba74,#86efac\" \"MYSAFECODING_MODE=web QUEUE_CONNECTION=database php artisan serve\" \"MYSAFECODING_MODE=web QUEUE_CONNECTION=database php artisan queue:work --timeout=1800\" \"npm run dev\" --names=web,worker,vite --kill-others"
+        ],
+        "scan": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php artisan mysafecoding:scan"
         ]
     },
     "extra": {

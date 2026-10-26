@@ -1,0 +1,46 @@
+rules:
+  - id: mysafecoding.python.sql-injection-format
+    message: SQL query built with string formatting
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: $DB.execute("..." % ...)
+          - pattern: $DB.execute("..." .format(...))
+          - pattern: $DB.execute(f"...")
+
+  - id: mysafecoding.python.yaml-unsafe-load
+    message: yaml.load() without Loader is unsafe
+    severity: ERROR
+    languages: [python]
+    pattern: yaml.load($DATA)
+
+  - id: mysafecoding.python.jinja2-autoescape-disabled
+    message: Jinja2 autoescape is disabled
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern: jinja2.Environment(..., autoescape=False, ...)
+      - pattern: jinja2.Environment(autoescape=False)
+
+  - id: mysafecoding.python.requests-no-timeout
+    message: requests call without timeout
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: requests.get($URL)
+          - pattern: requests.post($URL)
+          - pattern: requests.put($URL)
+          - pattern: requests.delete($URL)
+
+  - id: mysafecoding.python.assert-in-production
+    message: assert statement used for security check
+    severity: WARNING
+    languages: [python]
+    pattern: assert $CONDITION, $MSG
+    paths:
+      exclude:
+        - "**/test*"
+        - "**/spec*"
+        - "**/conftest.py"
