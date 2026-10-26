@@ -153,6 +153,9 @@ class WebScanTest extends TestCase
             ->assertOk()
             ->assertSee('webkitdirectory', false)
             ->assertSee('web · nothing stored')
-            ->assertDontSee('Install via Homebrew');
+            ->assertDontSee('Install via Homebrew')
+            ->assertSee('Star on GitHub')
+            ->assertSee('https://github.com/sponsors/aliuwahab', false)
+            ->assertDontSee('Hosted scan');
     }
 }

@@ -4,7 +4,7 @@ This document tracks the feature roadmap for CheckMyCode, the free open-source l
 
 ## Vision
 
-CheckMyCode is the fast, local-first security scanner developers can use before moving to the hosted MySafeCoding workflow. It runs entirely on the developer's machine: no accounts, no SaaS dependency, no data leaving the laptop. The desktop app is the entry point to the broader MySafeCoding platform at https://www.mysafecoding.com/.
+CheckMyCode is a free, open-source security scanner for the stacks developers ship every day. Run it on your machine (desktop app or CLI), in CI, or at https://checkmycode.dev without an account. Nothing about your code is kept. The project is funded by its users through [GitHub Sponsors](https://github.com/sponsors/aliuwahab).
 
 ---
 
@@ -25,7 +25,6 @@ CheckMyCode is the fast, local-first security scanner developers can use before 
 - [x] GitHub Actions workflow generator
 - [x] First-run dependency installer (Homebrew)
 - [x] Exclusion list management
-- [x] Hosted Scan CTA to mysafecoding.com
 - [x] Open-source contributor and security reporting docs
 
 ---
@@ -34,7 +33,7 @@ CheckMyCode is the fast, local-first security scanner developers can use before 
 - [x] Shared PHP scan engine for desktop, web and CLI (`checkmycode:scan`)
 - [x] Hosted web mode: browser folder/file picking, client-side exclusions, scan-and-delete, no accounts or database
 - [x] Docker image for CLI, CI and self-hosting the web scanner
-- [x] Ported hosted-platform engines: custom Semgrep rules, cross-language pattern rules, endoflife.date lifecycle checks
+- [x] Custom Semgrep rules, cross-language pattern rules, endoflife.date lifecycle checks
 - [x] Trivy misconfiguration (IaC) and license scanning
 - [x] Single-file scanning
 - [x] CI workflow generator uses the Docker image and uploads SARIF to code scanning
@@ -82,22 +81,16 @@ CheckMyCode is the fast, local-first security scanner developers can use before 
 
 ## Architecture Principles
 
-1. **Local-first** — All scanning happens on the developer's machine. No data leaves the laptop.
+1. **Private by default** — Desktop and CLI never send code anywhere; the web scanner deletes uploads as soon as the scan finishes.
 2. **Zero config** — Works out of the box. Select a folder, click scan.
 3. **Framework-aware** — Built with Laravel-powered Livewire + NativePHP, while scanning the popular stacks developers ship every day.
-4. **Open source** — Free forever for individual developers.
-5. **Gateway to MySafeCoding** — The desktop app proves the workflow; the platform extends it with team features, hosted dashboards, and CI integrations.
+4. **Open source and free** — No paid tier, no accounts. Sustained by sponsorship.
 
 ---
 
-## Non-Goals (for this repo)
+## Non-Goals
 
-These belong in the MySafeCoding platform, not the desktop app:
-- User authentication / accounts
-- Team management
-- Hosted API / webhooks
-- Nightly scheduled scans (cloud)
-- Billing
-- Organization workflows
-
-See https://www.mysafecoding.com/ for the full platform vision.
+To keep CheckMyCode simple, free and private, it does not plan to add:
+- User accounts or authentication
+- Storing scanned code or results on a server
+- Paid tiers or billing

@@ -8,11 +8,7 @@ Security fixes are shipped on the latest public release of CheckMyCode. If you a
 
 Please do not open a public issue for a vulnerability in CheckMyCode or its scan engine.
 
-Email security reports to:
-
-```text
-security@mysafecoding.com
-```
+Report it privately through GitHub: open the repository's **Security** tab and choose **Report a vulnerability** (GitHub private vulnerability reporting).
 
 Include:
 

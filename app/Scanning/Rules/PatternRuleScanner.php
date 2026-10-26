@@ -9,7 +9,7 @@ use RecursiveIteratorIterator;
 use SplFileInfo;
 
 /**
- * Regex-based rule pack shared with the hosted CheckMyCode platform.
+ * Regex-based, cross-language rule pack.
  *
  * Laravel projects are covered by the dedicated LaravelRuleEngine plus the
  * custom Semgrep rules, so only the universal rules run for them here.

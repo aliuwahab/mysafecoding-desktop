@@ -1,5 +1,11 @@
 # CheckMyCode
 
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ff6b9a?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/aliuwahab)
+[![GitHub stars](https://img.shields.io/github/stars/aliuwahab/mysafecoding-desktop?style=social)](https://github.com/aliuwahab/mysafecoding-desktop)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**Free and open source.** Scan in the browser at **[checkmycode.dev](https://checkmycode.dev)** with no account, or run it locally with the desktop app, the CLI or Docker.
+
 Open-source security scanner for the projects developers ship every day. Point it at a folder (or a single file) and it finds:
 
 | Engine | What it checks | Powered by |
@@ -82,7 +88,7 @@ app/Scanning/
   ProjectDetector.php       Stack detection (Laravel, Next.js, Django, Spring, …)
   SemgrepRulesets.php       Registry packs + custom rules per stack
   ScanGrade.php             A–F security grade
-  Rules/PatternRuleScanner  Cross-language pattern rules (shared with the hosted platform)
+  Rules/PatternRuleScanner  Cross-language pattern rules
   Lifecycle/                endoflife.date support checks
   Store/                    DatabaseScanStore (desktop) · EphemeralScanStore (web: cache + session)
   Web/ArchiveExtractor      Safe upload extraction (zip-slip, symlink, size and count limits)
@@ -106,3 +112,11 @@ php artisan test
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) to add a stack, a rule or an export format, and [WARP.md](./WARP.md) for the roadmap.
+
+## Support the project
+
+CheckMyCode is free, has no paid tier and doesn't keep your code. If it saves you time or catches something before production:
+
+- ⭐ **[Star the repo](https://github.com/aliuwahab/mysafecoding-desktop)** so other developers find it
+- ❤️ **[Sponsor on GitHub](https://github.com/sponsors/aliuwahab)** to keep the hosted scanner running and new rules coming
+- 🐛 Report false positives and contribute rules (see [CONTRIBUTING.md](./CONTRIBUTING.md))

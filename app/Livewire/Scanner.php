@@ -394,20 +394,17 @@ class Scanner extends Component
         return null;
     }
 
-    public function openComprehensiveScan(): void
+    public function openLink(string $which): void
     {
-        $url = config('checkmycode.hosted_url');
-        if (! $url) {
-            return;
+        $url = match ($which) {
+            'github' => config('checkmycode.github_url'),
+            'sponsor' => config('checkmycode.sponsor_url'),
+            default => null,
+        };
+
+        if ($url) {
+            Shell::openExternal($url);
         }
-
-        if ($this->webMode) {
-            $this->js('window.open('.json_encode($url).', "_blank", "noopener")');
-
-            return;
-        }
-
-        Shell::openExternal($url);
     }
 
     public function getSecurityGrade(): array

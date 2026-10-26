@@ -78,6 +78,7 @@ return [
 
     'docker_image' => env('CHECKMYCODE_DOCKER_IMAGE', 'ghcr.io/aliuwahab/checkmycode:latest'),
 
-    // Optional link to a hosted/team product, shown as a "Hosted scan" button. Empty hides it.
-    'hosted_url' => env('CHECKMYCODE_HOSTED_URL'),
+    // Shown in the sidebar: CheckMyCode is free and open source.
+    'github_url' => env('CHECKMYCODE_GITHUB_URL', 'https://github.com/aliuwahab/mysafecoding-desktop'),
+    'sponsor_url' => env('CHECKMYCODE_SPONSOR_URL', 'https://github.com/sponsors/aliuwahab'),
 ];
