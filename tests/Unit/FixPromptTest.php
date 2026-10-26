@@ -34,6 +34,9 @@ class FixPromptTest extends TestCase
         $this->assertStringContainsString("`{$vuln['PkgName']}` {$vuln['InstalledVersion']}", $prompt);
         $this->assertStringContainsString($vuln['VulnerabilityID'], $prompt);
         $this->assertStringContainsString('same major version', $prompt);
+        $this->assertStringContainsString('### Safe upgrades (patch or minor): apply these', $prompt);
+        $this->assertStringContainsString('same package-manager version', $prompt);
+        $this->assertStringContainsString('pull-request description', $prompt);
     }
 
     public function test_secret_values_never_reach_the_prompt(): void

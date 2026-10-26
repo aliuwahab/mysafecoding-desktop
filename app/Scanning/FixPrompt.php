@@ -25,8 +25,10 @@ class FixPrompt
         }
 
         [$category, $guidance] = static::guidance($tab);
-        $shown = array_slice($items, 0, self::MAX_ITEMS);
-        $more = count($items) - count($shown);
+        $total = count($items);
+        $issueLines = static::issueLines($items);
+        $shown = array_slice($issueLines, 0, self::MAX_ITEMS);
+        $more = count(array_filter($issueLines, fn (string $line): bool => str_starts_with($line, '- '))) - count(array_filter($shown, fn (string $line): bool => str_starts_with($line, '- ')));
         $project = trim(($projectName ? "\"{$projectName}\"" : 'this project').' ('.ProjectDetector::label($results['project_type'] ?? 'unknown').')');
         $reviewOnly = $tab === 'licenses';
 
@@ -45,7 +47,7 @@ class FixPrompt
             '## How to fix '.$category,
             ...array_map(static fn (string $line): string => '- '.$line, $guidance),
             '',
-            '## Issues ('.count($items).')',
+            '## Issues ('.$total.')',
             ...$shown,
         ];
 
@@ -57,13 +59,42 @@ class FixPrompt
             '',
             '## When you are done',
             'Reply with a table of every issue above: what you changed (file and a one-line summary), or why you did not change it (false positive / needs review). Then list the commands you ran (tests, build, linters) and their results.',
+            'Write it so it can be used as the pull-request description, and suggest re-running the CheckMyCode scan after merging to confirm the issues are gone.',
         );
 
         return implode("\n", $lines);
     }
 
     /**
-     * @return list<string> one markdown bullet per open finding
+     * Dependency items are grouped by how risky their fix is; other tabs are a flat list.
+     *
+     * @param  list<string|array{group: string, text: string}>  $items
+     * @return list<string>
+     */
+    protected static function issueLines(array $items): array
+    {
+        if ($items === [] || is_string($items[0])) {
+            return $items;
+        }
+
+        $sections = [
+            'safe' => '### Safe upgrades (patch or minor): apply these',
+            'major' => '### Major upgrade required: do not apply, list under "Needs review" with the breaking changes',
+            'none' => '### No fixed version published yet: report only',
+        ];
+        $lines = [];
+        foreach ($sections as $group => $heading) {
+            $groupItems = array_column(array_filter($items, fn (array $item): bool => $item['group'] === $group), 'text');
+            if ($groupItems !== []) {
+                array_push($lines, $heading, ...$groupItems);
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @return list<string|array{group: string, text: string}> one markdown bullet per open finding
      */
     protected static function items(string $tab, array $results, array $ignored): array
     {
@@ -83,17 +114,29 @@ class FixPrompt
                         if ($isIgnored('trivy', ($vuln['VulnerabilityID'] ?? '').':'.($vuln['PkgName'] ?? ''))) {
                             continue;
                         }
-                        $items[] = sprintf(
-                            '- [%s] `%s` %s in `%s`%s: %s (%s). Fixed in: %s.',
-                            $vuln['Severity'] ?? 'UNKNOWN',
-                            $vuln['PkgName'] ?? '?',
-                            $vuln['InstalledVersion'] ?? '?',
-                            $target['Target'] ?? 'lockfile',
-                            ! empty($vuln['DevDependency']) ? ' (dev dependency)' : '',
-                            $vuln['VulnerabilityID'] ?? '',
-                            $clip($vuln['Title'] ?? '', 140),
-                            ($vuln['FixedVersion'] ?? '') !== '' ? $vuln['FixedVersion'] : 'no fixed version published yet',
-                        );
+                        $path = UpgradePath::classify($vuln['InstalledVersion'] ?? null, $vuln['FixedVersion'] ?? null);
+                        $items[] = [
+                            'group' => match ($path['type']) {
+                                'patch', 'minor' => 'safe',
+                                'major', 'unknown' => 'major',
+                                default => 'none',
+                            },
+                            'text' => sprintf(
+                                '- [%s] `%s` %s in `%s`%s: %s (%s). %s',
+                                $vuln['Severity'] ?? 'UNKNOWN',
+                                $vuln['PkgName'] ?? '?',
+                                $vuln['InstalledVersion'] ?? '?',
+                                $target['Target'] ?? 'lockfile',
+                                ! empty($vuln['DevDependency']) ? ' (dev dependency)' : '',
+                                $vuln['VulnerabilityID'] ?? '',
+                                $clip($vuln['Title'] ?? '', 140),
+                                match ($path['type']) {
+                                    'none' => 'No fixed version published yet.',
+                                    'unknown' => 'Fixed in: '.$vuln['FixedVersion'].' (could not compare versions; check whether this is a breaking upgrade).',
+                                    default => "Upgrade to {$path['target']} ({$path['type']} upgrade).",
+                                },
+                            ),
+                        ];
                     }
                 }
                 break;
@@ -208,7 +251,8 @@ class FixPrompt
             'trivy' => ['vulnerable dependencies', [
                 'Upgrade each package to the lowest version that fixes all of its listed vulnerabilities, preferring a patch or minor upgrade within the same major version.',
                 'Use the project\'s package manager (e.g. composer update <pkg> --with-dependencies, npm install <pkg>@<version>, pip, bundle update --conservative) so lockfiles stay consistent. Do not edit lockfiles by hand.',
-                'If a package is only vulnerable through another dependency, upgrade the direct dependency that pulls it in, or use the package manager\'s override/resolution mechanism.',
+                'Regenerate lockfiles with the same package-manager version the project\'s CI or production uses (check engines/packageManager fields, CI config, or the deploy server) to avoid lockfile churn, then confirm a clean install works (e.g. npm ci --dry-run, composer install --dry-run).',
+                'If a package is only vulnerable through another dependency, upgrade the direct dependency that pulls it in. If that parent pins it exactly, use the package manager\'s override/resolution mechanism (npm overrides, pnpm overrides, yarn resolutions, composer conflict) for a patch-level fix, and note each override in your summary so it can be removed once the parent package updates.',
                 'If only a new major version fixes it, or no fix exists, do not upgrade: put it under "Needs review" with the breaking changes to expect.',
                 'Dev dependencies matter less for production, but fix them the same way when the upgrade is safe.',
             ]],

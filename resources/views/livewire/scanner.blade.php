@@ -723,7 +723,17 @@
                   @endif
                 </span>
                 <span class="mono" style="color:var(--fg-3);">{{ $vuln['InstalledVersion']??'' }}</span>
-                <span class="mono" style="color:var(--sev-ok);">→ {{ $vuln['FixedVersion']??'N/A' }}</span>
+                @php
+                  $upgrade = \App\Scanning\UpgradePath::classify($vuln['InstalledVersion'] ?? null, $vuln['FixedVersion'] ?? null);
+                  $upgradeStyles = ['patch' => ['var(--sev-ok)', 'safe patch upgrade'], 'minor' => ['var(--sev-ok)', 'minor upgrade, usually safe'], 'major' => ['var(--sev-high)', 'major upgrade: may break things, review first'], 'unknown' => ['var(--fg-3)', 'could not compare versions'], 'none' => ['var(--fg-3)', 'no fixed version published yet']];
+                  [$upgradeColor, $upgradeHint] = $upgradeStyles[$upgrade['type']];
+                @endphp
+                <span style="display:flex;flex-direction:column;gap:3px;min-width:0;" title="{{ $vuln['FixedVersion'] ?? '' }}">
+                  <span class="mono" style="color:{{ $upgrade['type'] === 'none' ? 'var(--fg-3)' : 'var(--sev-ok)' }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $upgrade['target'] ? '→ '.$upgrade['target'] : 'no fix yet' }}</span>
+                  @if (in_array($upgrade['type'], ['patch', 'minor', 'major'], true))
+                    <span title="{{ $upgradeHint }}" style="width:fit-content;font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;color:{{ $upgradeColor }};background:color-mix(in srgb,{{ $upgradeColor }} 14%,transparent);font-family:var(--font-mono);">{{ $upgrade['type'] }}</span>
+                  @endif
+                </span>
                 <span style="color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $result['Target'] ?? '' }}">@if (!empty($vuln['PrimaryURL']))<a href="{{ $vuln['PrimaryURL'] }}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;">{{ $vuln['Title']??$vuln['Description']??'' }}</a>@else{{ $vuln['Title']??$vuln['Description']??'' }}@endif</span>
                 @if ($ignored)
                   <div style="display:flex;align-items:center;gap:4px;">
