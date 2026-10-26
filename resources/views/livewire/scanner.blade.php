@@ -874,6 +874,16 @@
     @include('livewire.partials.tab-header', ['title' => 'Rule findings', 'count' => $rulesTotal, 'subtitle' => ($isLaravelProject ? 'Laravel rule pack + ' : '').'CheckMyCode custom rules · '.\App\Scanning\ProjectDetector::label($scanProjectType ?? 'unknown'), 'promptTab' => 'rules'])
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @include('livewire.partials.gitignored-note')
+        @if (!empty($results['suppressed']))
+          <details style="padding:12px 16px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:8px;font-size:12px;color:var(--fg-2);line-height:1.5;">
+            <summary style="cursor:pointer;">{{ count($results['suppressed']) }} {{ Str::plural('finding', count($results['suppressed'])) }} suppressed by <span class="mono" style="color:var(--fg-1);">checkmycode-ignore</span> comments in your code</summary>
+            <ul style="margin:8px 0 0;padding-left:18px;">
+              @foreach ($results['suppressed'] as $s)
+                <li><span class="mono" style="color:var(--fg-1);">{{ $s['file'] }}:{{ $s['line'] }}</span> <span class="mono" style="color:var(--fg-3);">{{ $s['rule'] }}</span>{{ $s['reason'] ? ': '.$s['reason'] : ' (no reason given)' }}</li>
+              @endforeach
+            </ul>
+          </details>
+        @endif
         @forelse ($ruleFindings as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => $finding['_scanner'], 'icon' => '<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>'])
         @empty

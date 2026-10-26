@@ -83,6 +83,21 @@ docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/checkmycode scan /src
 
 Set `CHECKMYCODE_CI_WORKFLOW=true` to show a **CI YAML** button that generates a GitHub Actions workflow. The workflow runs the Docker image on every PR and uploads SARIF to GitHub code scanning. Enable it only once the Docker image is publicly pullable.
 
+## Suppressing a verified false positive
+
+Mark it in the code, with a reason, so the decision is reviewed with your changes and applies to every scan (web, desktop, CLI, CI):
+
+| Finding from | Suppression |
+|---|---|
+| CheckMyCode rules (Rules tab) | `// checkmycode-ignore[<rule-id>]: <reason>` on the line or the line above (any comment syntax, e.g. `{{-- … --}}` in Blade) |
+| Semgrep (Code, Quality) | `// nosemgrep: <rule-id>` |
+| Gitleaks (Secrets) | `gitleaks:allow` (test fixtures only, never real credentials) |
+| zizmor (Workflows) | `# zizmor: ignore[<audit>]` |
+| Trivy config (Config) | `#trivy:ignore:<ID>` |
+| Dependencies | `.trivyignore` and `osv-scanner.toml` (`[[IgnoredVulns]]`) next to the lockfile |
+
+Suppressed CheckMyCode findings are still listed (collapsed, with their reasons) in the Rules tab. The **Copy fix prompt** button tells coding agents to use these comments for false positives they verify.
+
 ## How it works
 
 ```text

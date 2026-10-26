@@ -197,6 +197,7 @@ class ScanEngine
         }
 
         $results = $this->dropOverlappingSemgrepFindings($results);
+        $results = $this->applyInlineSuppressions($results);
         $results = $this->skipGitIgnoredFiles($results);
 
         if ($this->options['redact_secrets']) {
@@ -693,6 +694,67 @@ class ScanEngine
         return $results;
     }
 
+    /**
+     * A verified false positive can be suppressed in the code itself, so the
+     * decision is reviewed and versioned with the project and applies to every
+     * scan (web, desktop, CLI, CI). On the flagged line or the line above:
+     *
+     *   // checkmycode-ignore[laravel.blade.raw-output]: sanitized by Filament
+     *   {{-- checkmycode-ignore: reason --}}   (no rule list = any rule on that line)
+     *
+     * Semgrep (nosemgrep), Gitleaks (gitleaks:allow), zizmor (zizmor: ignore[...])
+     * and Trivy (trivy:ignore:ID) already honour their own inline comments.
+     */
+    protected function applyInlineSuppressions(array $results): array
+    {
+        $suppressed = [];
+        $lineCache = [];
+
+        foreach (['laravel_rules', 'custom_rules'] as $pack) {
+            if (empty($results[$pack]['findings'])) {
+                continue;
+            }
+
+            $results[$pack]['findings'] = array_values(array_filter($results[$pack]['findings'], function (array $finding) use (&$suppressed, &$lineCache): bool {
+                $file = (string) ($finding['file_path'] ?? '');
+                $line = (int) ($finding['line_start'] ?? 0);
+                if ($file === '' || $line < 1) {
+                    return true;
+                }
+
+                $lines = $lineCache[$file] ??= (is_file($this->projectPath.'/'.$file) ? (@file($this->projectPath.'/'.$file, FILE_IGNORE_NEW_LINES) ?: []) : []);
+                foreach ([$line - 1, $line - 2] as $index) {
+                    // The line above only counts when it is a comment on its own; a trailing
+                    // comment after code applies to that code's line only.
+                    if ($index === $line - 2 && isset($lines[$index]) && ! preg_match('/^\s*(\/\/|#|\/\*|\*|\{\{--|<!--|--)/', $lines[$index])) {
+                        continue;
+                    }
+                    if (! isset($lines[$index]) || ! preg_match('/checkmycode-ignore(?:\[([^\]]*)\])?\s*(?::\s*(.*?))?(?:\s*(?:--\}\}|\*\/|-->))?\s*$/i', $lines[$index], $match)) {
+                        continue;
+                    }
+                    $rules = array_filter(array_map('trim', explode(',', $match[1] ?? '')));
+                    if ($rules === [] || in_array($finding['rule_id'] ?? '', $rules, true)) {
+                        $suppressed[] = ['file' => $file, 'line' => $line, 'rule' => $finding['rule_id'] ?? '', 'reason' => trim($match[2] ?? '') ?: null];
+
+                        return false;
+                    }
+                }
+
+                return true;
+            }));
+            $results[$pack]['summary'] = static::severitySummary($results[$pack]['findings'], $results[$pack]['summary'] ?? []);
+            $results['summary'][$pack] = $results[$pack]['summary'];
+            $results['summary'][$pack.'_total'] = $results[$pack]['summary']['total'];
+        }
+
+        $results['suppressed'] = $suppressed;
+        if ($suppressed !== []) {
+            $this->log(count($suppressed).' findings suppressed by checkmycode-ignore comments in the code.');
+        }
+
+        return $results;
+    }
+
     // ── Gitignored files ─────────────────────────────────────────────────────
 
     /**
@@ -865,10 +927,23 @@ class ScanEngine
 
     public static function maskSecretValues(string $code): string
     {
-        // Quoted literals keep their first 4 characters: "sk_live_abc..." -> "sk_l********"
-        $code = preg_replace('/(["\'`])([^"\'`\s]{0,4})[^"\'`]{4,}\1/', '$1$2********$1', $code) ?? $code;
+        $mask = static fn (string $value): string => mb_substr($value, 0, 4).'********';
 
-        // Unquoted assignments such as KEY=value in config files.
+        // 1. Values with a well-known credential format, wherever they appear.
+        $code = preg_replace_callback(
+            '/\b(sk_(?:live|test)_[A-Za-z0-9]{8,}|rk_live_[A-Za-z0-9]{8,}|AKIA[0-9A-Z]{12,}|ASIA[0-9A-Z]{12,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_\-]{16,}|xox[abprs]-[A-Za-z0-9\-]{10,}|AIza[0-9A-Za-z_\-]{20,}|ya29\.[0-9A-Za-z_\-]{20,}|SG\.[A-Za-z0-9_\-]{16,}|eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}|base64:[A-Za-z0-9+\/=]{16,})/',
+            fn (array $m): string => $mask($m[1]),
+            $code,
+        ) ?? $code;
+
+        // 2. Quoted values assigned to secret-looking names: password = "...", 'api_key' => '...'.
+        $code = preg_replace_callback(
+            '/((?:pass(?:word|wd)?|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth|credential)s?[\w.-]*["\']?\s*(?:=>|=|:)\s*)(["\'`])([^"\'`]{4,})\2/i',
+            fn (array $m): string => $m[1].$m[2].$mask($m[3]).$m[2],
+            $code,
+        ) ?? $code;
+
+        // 3. Unquoted assignments such as KEY=value in config files.
         return preg_replace('/^(\s*(?:\d+:\s*)?[\w.-]*(?:KEY|SECRET|PASSWORD|TOKEN|PASS)[\w.-]*\s*[=:]\s*)([^\s"\'`]{4})\S{4,}/im', '$1$2********', $code) ?? $code;
     }
 

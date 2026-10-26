@@ -12,6 +12,9 @@ class SecretRedactionTest extends TestCase
         $this->assertSame('const key = "sk_l********";', ScanEngine::maskSecretValues('const key = "sk_live_4eC39HqLyjWDarjtT1zdp7dc";'));
         $this->assertSame('3: DB_PASSWORD=hunt********', ScanEngine::maskSecretValues('3: DB_PASSWORD=hunter2hunter2'));
         $this->assertSame("x = 'ok'", ScanEngine::maskSecretValues("x = 'ok'"));
+        // Ordinary quoted strings (HTML attributes, labels) must stay readable.
+        $this->assertSame('<td style="padding: 24px 32px">', ScanEngine::maskSecretValues('<td style="padding: 24px 32px">'));
+        $this->assertSame('route("dashboard.index", ["name" => "Some long label"])', ScanEngine::maskSecretValues('route("dashboard.index", ["name" => "Some long label"])'));
     }
 
     public function test_only_secret_findings_are_redacted(): void

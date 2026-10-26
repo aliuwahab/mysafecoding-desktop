@@ -40,7 +40,7 @@ class FixPrompt
             '- Preserve existing functionality. Do not change public behaviour, APIs, routes, database schema, UI, configuration defaults or output formats, except where that is the only way to close the security issue.',
             '- Make the smallest safe change for each issue and follow the code style and patterns already used in the project. No unrelated refactors, renames, reformatting or dependency changes.',
             '- If a fix would change behaviour, needs a product decision, or requires a major-version upgrade, do not apply it. List it under "Needs review" with the reason and the options.',
-            '- If you are confident an item is a false positive, leave the code unchanged and explain why.',
+            '- If you verify that an item is a false positive, do not change the code around it. Instead, record the decision with a suppression comment on the flagged line or the line above, with a short reason, so future scans skip it: '.static::suppressionSyntax($tab).' Never use a suppression to hide a real issue.',
             '- Never print, log or commit secret values.',
             '- Before finishing, run the existing tests, linters and build. Everything that passed before must still pass. Add or adjust tests only where needed to cover a fix.',
             '',
@@ -58,11 +58,24 @@ class FixPrompt
         array_push($lines,
             '',
             '## When you are done',
-            'Reply with a table of every issue above: what you changed (file and a one-line summary), or why you did not change it (false positive / needs review). Then list the commands you ran (tests, build, linters) and their results.',
+            'Reply with a table of every issue above: what you changed (file and a one-line summary), or why you did not change it (false positive with the suppression you added / needs review). Then list the commands you ran (tests, build, linters) and their results.',
             'Write it so it can be used as the pull-request description, and suggest re-running the CheckMyCode scan after merging to confirm the issues are gone.',
         );
 
         return implode("\n", $lines);
+    }
+
+    protected static function suppressionSyntax(string $tab): string
+    {
+        return match ($tab) {
+            'rules' => 'use `checkmycode-ignore[<rule-id>]: <reason>` in the file\'s comment syntax, e.g. `{{-- checkmycode-ignore[laravel.blade.raw-output]: sanitized by X --}}` in Blade or `// checkmycode-ignore[<rule-id>]: <reason>` in PHP/JS.',
+            'semgrep', 'code_quality' => 'use Semgrep\'s `nosemgrep: <rule-id>` comment followed by the reason (e.g. `// nosemgrep: <rule-id> -- <reason>`).',
+            'gitleaks' => 'only if it is not a real credential (e.g. a documented test fixture), add `gitleaks:allow` in a comment on that line with the reason.',
+            'workflows' => 'use zizmor\'s `# zizmor: ignore[<audit>]` comment on that line, with the reason.',
+            'config' => 'use Trivy\'s `#trivy:ignore:<ID>` comment on the line above, with the reason.',
+            'trivy' => 'add the advisory ID to `.trivyignore` with a `# reason` comment, and to `osv-scanner.toml` as an [[IgnoredVulns]] entry with id and reason (both live next to the lockfile and are read by the scan).',
+            default => 'explain it in your summary (this category has no inline suppression; mark it as ignored in CheckMyCode instead).',
+        };
     }
 
     /**

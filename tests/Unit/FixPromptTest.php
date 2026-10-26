@@ -94,4 +94,14 @@ class FixPromptTest extends TestCase
         $this->assertStringContainsString('## Issues (3)', $prompt);
         $this->assertStringContainsString('assess the real exposure', $prompt);
     }
+
+    public function test_false_positives_are_recorded_with_the_engines_suppression_syntax(): void
+    {
+        $results = $this->results();
+
+        $this->assertStringContainsString('checkmycode-ignore[<rule-id>]', FixPrompt::forTab('rules', $results));
+        $this->assertStringContainsString('nosemgrep', FixPrompt::forTab('semgrep', $results));
+        $this->assertStringContainsString('.trivyignore', FixPrompt::forTab('trivy', $results));
+        $this->assertStringContainsString('Never use a suppression to hide a real issue.', FixPrompt::forTab('rules', $results));
+    }
 }

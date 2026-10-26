@@ -80,6 +80,19 @@ class ScannerScreensTest extends TestCase
             ->assertSee('affect the grade');
     }
 
+    public function test_suppressed_findings_are_listed_with_reasons(): void
+    {
+        $results = $this->results();
+        $results['suppressed'] = [['file' => 'resources/views/emails/newsletter.blade.php', 'line' => 30, 'rule' => 'laravel.blade.raw-output', 'reason' => 'sanitized by Filament']];
+        Scan::create(['project_path' => '/tmp/example-app', 'status' => 'completed', 'results' => $results]);
+
+        Livewire::test(Scanner::class)
+            ->set('activeTab', 'rules')
+            ->assertSee('1 finding suppressed by')
+            ->assertSee('newsletter.blade.php:30')
+            ->assertSee('sanitized by Filament');
+    }
+
     public function test_rule_findings_can_be_ignored(): void
     {
         $results = $this->results();
