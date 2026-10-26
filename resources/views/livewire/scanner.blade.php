@@ -685,6 +685,7 @@
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $trivyTotal }} results</span>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">Trivy + OSV-Scanner · public CVE databases for every lockfile</span>
+        @include('livewire.partials.fix-prompt-button', ['tab' => 'trivy'])
     </div>
     <div style="padding:4px 32px 32px;">
       @if (($summary['dev_dependencies_total'] ?? 0) > 0)
@@ -753,6 +754,7 @@
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $semgrepTotal }} results</span>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">Semgrep · language-aware rules</span>
+        @include('livewire.partials.fix-prompt-button', ['tab' => 'semgrep'])
     </div>
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
         @forelse ($results['semgrep']['results'] ?? [] as $finding)
@@ -809,6 +811,7 @@
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $gitleaksTotal }} results</span>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">Gitleaks · {{ ($results['meta']['git_history'] ?? true) ? 'files + full git history' : 'current files' }}</span>
+        @include('livewire.partials.fix-prompt-button', ['tab' => 'gitleaks'])
     </div>
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
         @include('livewire.partials.gitignored-note')
@@ -858,7 +861,7 @@
   );
 @endphp
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    @include('livewire.partials.tab-header', ['title' => 'Rule findings', 'count' => $rulesTotal, 'subtitle' => ($isLaravelProject ? 'Laravel rule pack + ' : '').'CheckMyCode custom rules · '.\App\Scanning\ProjectDetector::label($scanProjectType ?? 'unknown')])
+    @include('livewire.partials.tab-header', ['title' => 'Rule findings', 'count' => $rulesTotal, 'subtitle' => ($isLaravelProject ? 'Laravel rule pack + ' : '').'CheckMyCode custom rules · '.\App\Scanning\ProjectDetector::label($scanProjectType ?? 'unknown'), 'promptTab' => 'rules'])
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @include('livewire.partials.gitignored-note')
         @forelse ($ruleFindings as $finding)
@@ -872,7 +875,7 @@
 {{-- CONFIG / IaC -------------------------------------------------------- --}}
 @elseif ($activeTab === 'config')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    @include('livewire.partials.tab-header', ['title' => 'Configuration & IaC', 'count' => $configTotal, 'subtitle' => 'Trivy · Dockerfile, Kubernetes, Terraform, CloudFormation, Helm'])
+    @include('livewire.partials.tab-header', ['title' => 'Configuration & IaC', 'count' => $configTotal, 'subtitle' => 'Trivy · Dockerfile, Kubernetes, Terraform, CloudFormation, Helm', 'promptTab' => 'config'])
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @forelse ($results['trivy_config']['findings'] ?? [] as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'trivy_config', 'icon' => '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4"/>'])
@@ -885,7 +888,7 @@
 {{-- WORKFLOWS (GitHub Actions) ------------------------------------------ --}}
 @elseif ($activeTab === 'workflows')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    @include('livewire.partials.tab-header', ['title' => 'Workflow security', 'count' => $workflowsTotal, 'subtitle' => 'zizmor · GitHub Actions injection, triggers, permissions, pinning'])
+    @include('livewire.partials.tab-header', ['title' => 'Workflow security', 'count' => $workflowsTotal, 'subtitle' => 'zizmor · GitHub Actions injection, triggers, permissions, pinning', 'promptTab' => 'workflows'])
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @forelse ($results['workflows']['findings'] ?? [] as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'workflows', 'icon' => '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M6 8.5v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M12 12.5v3"/>'])
@@ -898,7 +901,7 @@
 {{-- LIFECYCLE ------------------------------------------------------------ --}}
 @elseif ($activeTab === 'lifecycle')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    @include('livewire.partials.tab-header', ['title' => 'Lifecycle support', 'count' => $lifecycleTotal, 'subtitle' => 'endoflife.date · runtimes and frameworks'])
+    @include('livewire.partials.tab-header', ['title' => 'Lifecycle support', 'count' => $lifecycleTotal, 'subtitle' => 'endoflife.date · runtimes and frameworks', 'promptTab' => 'lifecycle'])
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @foreach ($results['endoflife']['findings'] ?? [] as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'endoflife', 'icon' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'])
@@ -928,7 +931,7 @@
 {{-- LICENSES ------------------------------------------------------------- --}}
 @elseif ($activeTab === 'licenses')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    @include('livewire.partials.tab-header', ['title' => 'Flagged licenses', 'count' => $licensesTotal, 'subtitle' => 'Trivy · copyleft and restricted licenses (not part of the grade)'])
+    @include('livewire.partials.tab-header', ['title' => 'Flagged licenses', 'count' => $licensesTotal, 'subtitle' => 'Trivy · copyleft and restricted licenses (not part of the grade)', 'promptTab' => 'licenses'])
     <div style="padding:16px 32px 32px;">
       @if (!empty($results['licenses']['findings']))
         <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
@@ -960,6 +963,7 @@
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $envTotal }} issues</span>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">.env · variables checked</span>
+        @include('livewire.partials.fix-prompt-button', ['tab' => 'env_audit'])
     </div>
     <div style="padding:16px 32px 32px;">
       @if (!empty($results['env_audit']['local_only']))
@@ -1008,6 +1012,7 @@
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Code quality</h2>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">Best practice suggestions</span>
+        @include('livewire.partials.fix-prompt-button', ['tab' => 'code_quality'])
     </div>
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
       <div style="padding:12px 16px;background:color-mix(in srgb,#c69dff 8%,transparent);border:1px solid color-mix(in srgb,#c69dff 20%,transparent);border-radius:8px;font-size:12px;color:var(--fg-2);">

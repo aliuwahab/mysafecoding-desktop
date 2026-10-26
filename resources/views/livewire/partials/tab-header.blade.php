@@ -3,4 +3,7 @@
     <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $count }} results</span>
     <span style="flex:1;"></span>
     <span style="font-size:11.5px;color:var(--fg-3);">{{ $subtitle }}</span>
+    @isset($promptTab)
+        @include('livewire.partials.fix-prompt-button', ['tab' => $promptTab])
+    @endisset
 </div>

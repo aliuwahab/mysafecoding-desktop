@@ -56,6 +56,12 @@ class ScannerScreensTest extends TestCase
         foreach ($expectations as $tab => $text) {
             $component->set('activeTab', $tab)->assertSee($text);
         }
+
+        foreach (['trivy', 'semgrep', 'gitleaks', 'rules', 'config', 'lifecycle', 'licenses', 'env_audit', 'code_quality'] as $tab) {
+            $component->set('activeTab', $tab)
+                ->assertSee('Copy fix prompt')
+                ->assertSee('Preserve existing functionality');
+        }
     }
 
     public function test_gitignored_skips_and_local_env_are_explained(): void
