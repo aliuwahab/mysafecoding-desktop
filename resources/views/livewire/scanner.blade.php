@@ -472,7 +472,7 @@
             @if ($grandTotal === 0)
               No issues found — ship with confidence.
             @else
-              <span style="color:var(--accent);">{{ $grandTotal }} findings</span> across local security engines.
+              <span style="color:var(--accent);">{{ $grandTotal }} findings</span> across {{ $webMode ? '' : 'local ' }}security engines.
               Address <span style="color:{{ $gradeColor }};">{{ $severityCounts['secrets'] + $severityCounts['critical'] }} blockers</span> before deploy.
             @endif
           </div>
@@ -1004,21 +1004,23 @@
 
 @if ($webMode)
 {{-- ── Web: drop zone + upload errors ──────────────────────────────── --}}
-<div x-show="dragging" x-cloak style="position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--bg-0) 80%,transparent);backdrop-filter:blur(3px);pointer-events:none;">
+<div x-show="dragging" x-cloak><div style="position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--bg-0) 80%,transparent);backdrop-filter:blur(3px);pointer-events:none;">
     <div style="padding:36px 48px;border:2px dashed var(--accent);border-radius:16px;text-align:center;background:var(--bg-2);">
         <div class="serif" style="font-size:26px;color:var(--fg-1);margin-bottom:6px;">Drop a folder or files to scan</div>
         <div style="font-size:12px;color:var(--fg-3);">Excluded folders are skipped in your browser. Nothing is stored.</div>
     </div>
 </div>
-<div x-show="error" x-cloak style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:45;max-width:560px;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-2);border:1px solid color-mix(in srgb,var(--sev-critical) 40%,var(--line-1));border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.4);font-size:12.5px;color:var(--fg-1);">
+</div>
+<div x-show="error" x-cloak><div style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:45;max-width:560px;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-2);border:1px solid color-mix(in srgb,var(--sev-critical) 40%,var(--line-1));border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.4);font-size:12.5px;color:var(--fg-1);">
     <span style="color:var(--sev-critical);">✗</span>
     <span x-text="error" style="flex:1;"></span>
     <button type="button" @click="error = null" style="color:var(--fg-3);">×</button>
 </div>
+</div>
 @endif
 
 @if ($webMode)
-<div x-show="showPrivacy" x-cloak @keydown.escape.window="showPrivacy = false" @click.self="showPrivacy = false" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">
+<div x-show="showPrivacy" x-cloak><div @keydown.escape.window="showPrivacy = false" @click.self="showPrivacy = false" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">
     <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:14px;padding:26px 28px;width:520px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,0.4);">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-ok);flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
@@ -1036,6 +1038,7 @@
             <button type="button" @click="showPrivacy = false" style="padding:8px 18px;font-size:12px;color:#fff;background:var(--accent);border-radius:8px;font-weight:600;">Got it</button>
         </div>
     </div>
+</div>
 </div>
 @endif
 
