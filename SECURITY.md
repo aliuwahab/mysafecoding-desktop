@@ -2,11 +2,11 @@
 
 ## Supported Versions
 
-Security fixes are shipped on the latest public release of MySafeCoding Desktop. If you are using an older build, update to the latest release before reporting an issue unless the issue still reproduces there.
+Security fixes are shipped on the latest public release of CheckMyCode. If you are using an older build, update to the latest release before reporting an issue unless the issue still reproduces there.
 
 ## Reporting Vulnerabilities
 
-Please do not open a public issue for a vulnerability in MySafeCoding Desktop or its bundled scanner scripts.
+Please do not open a public issue for a vulnerability in CheckMyCode or its scan engine.
 
 Email security reports to:
 
@@ -26,7 +26,7 @@ We aim to acknowledge reports within 72 hours and will coordinate a fix and disc
 
 ## Scanner Findings
 
-If MySafeCoding reports a false positive in your project, public issues are fine as long as the report does not disclose secrets, private source code, customer data, or exploitable details from a private system.
+If CheckMyCode reports a false positive in your project, public issues are fine as long as the report does not disclose secrets, private source code, customer data, or exploitable details from a private system.
 
 ## Supply Chain
 

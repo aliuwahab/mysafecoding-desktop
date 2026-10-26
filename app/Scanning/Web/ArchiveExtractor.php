@@ -20,8 +20,8 @@ class ArchiveExtractor
     public static function fromConfig(): self
     {
         return new self(
-            maxFiles: (int) config('mysafecoding.web.max_files', 20000),
-            maxUncompressedBytes: (int) config('mysafecoding.web.max_uncompressed_mb', 200) * 1024 * 1024,
+            maxFiles: (int) config('checkmycode.web.max_files', 20000),
+            maxUncompressedBytes: (int) config('checkmycode.web.max_uncompressed_mb', 200) * 1024 * 1024,
         );
     }
 

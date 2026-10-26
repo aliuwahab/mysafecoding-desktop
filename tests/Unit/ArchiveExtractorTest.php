@@ -15,7 +15,7 @@ class ArchiveExtractorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->dir = sys_get_temp_dir().'/mysafecoding-extract-'.uniqid();
+        $this->dir = sys_get_temp_dir().'/checkmycode-extract-'.uniqid();
         mkdir($this->dir, 0755, true);
     }
 

@@ -13,7 +13,7 @@ class PatternRuleScannerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->path = sys_get_temp_dir().'/mysafecoding-rules-'.uniqid();
+        $this->path = sys_get_temp_dir().'/checkmycode-rules-'.uniqid();
         mkdir($this->path, 0755, true);
     }
 
@@ -40,8 +40,8 @@ class PatternRuleScannerTest extends TestCase
 
         $result = (new PatternRuleScanner)->scan($this->path, 'python');
 
-        $this->assertContains('mysafecoding.python.pickle-deserialization', $this->ruleIds($result));
-        $this->assertContains('mysafecoding.python.eval-usage', $this->ruleIds($result));
+        $this->assertContains('checkmycode.python.pickle-deserialization', $this->ruleIds($result));
+        $this->assertContains('checkmycode.python.eval-usage', $this->ruleIds($result));
 
         $finding = $result['findings'][0];
         $this->assertSame('CRITICAL', $finding['severity']);
@@ -57,7 +57,7 @@ class PatternRuleScannerTest extends TestCase
 
         $result = (new PatternRuleScanner)->scan($this->path, 'go');
 
-        $this->assertContains('mysafecoding.hardcoded-credential', $this->ruleIds($result));
+        $this->assertContains('checkmycode.hardcoded-credential', $this->ruleIds($result));
     }
 
     public function test_excluded_and_dependency_folders_are_skipped(): void
@@ -75,7 +75,7 @@ class PatternRuleScannerTest extends TestCase
     {
         $this->write('app/Console/Run.php', '<?php shell_exec($input);');
 
-        $this->assertNotContains('mysafecoding.php.command-execution', $this->ruleIds((new PatternRuleScanner)->scan($this->path, 'laravel')));
-        $this->assertContains('mysafecoding.php.command-execution', $this->ruleIds((new PatternRuleScanner)->scan($this->path, 'symfony')));
+        $this->assertNotContains('checkmycode.php.command-execution', $this->ruleIds((new PatternRuleScanner)->scan($this->path, 'laravel')));
+        $this->assertContains('checkmycode.php.command-execution', $this->ruleIds((new PatternRuleScanner)->scan($this->path, 'symfony')));
     }
 }

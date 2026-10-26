@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('web-scans', fn (Request $request) => Limit::perHour(
-            (int) config('mysafecoding.web.scans_per_hour', 10),
+            (int) config('checkmycode.web.scans_per_hour', 10),
         )->by($request->ip()));
 
         if (! static::isWebMode()) {
@@ -39,6 +39,6 @@ class AppServiceProvider extends ServiceProvider
 
     public static function isWebMode(): bool
     {
-        return config('mysafecoding.mode') === 'web';
+        return config('checkmycode.mode') === 'web';
     }
 }

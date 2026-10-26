@@ -15,7 +15,7 @@ use Native\Desktop\Events\ChildProcess\StartupError;
 use Native\Desktop\Facades\ChildProcess;
 
 /**
- * Desktop mode: runs `php artisan mysafecoding:scan --machine` as a NativePHP
+ * Desktop mode: runs `php artisan checkmycode:scan --machine` as a NativePHP
  * child process, streams its log lines into scan_logs and stores the final
  * results on the scan record.
  */
@@ -39,7 +39,7 @@ class ScannerService
         static::createLog($scan->id, 'Starting security scan...');
 
         $cmd = [
-            'mysafecoding:scan',
+            'checkmycode:scan',
             $scan->project_path,
             '--machine',
             '--no-defaults',
@@ -124,7 +124,7 @@ class ScannerService
 
         if ($succeeded) {
             try {
-                \Native\Desktop\Facades\Notification::title('MySafeCoding Scan Complete')
+                \Native\Desktop\Facades\Notification::title('CheckMyCode Scan Complete')
                     ->message($findingsCount > 0 ? "{$findingsCount} security findings detected in ".basename($scan->project_path) : 'No issues found in '.basename($scan->project_path))
                     ->show();
             } catch (\Throwable) {
@@ -214,7 +214,7 @@ class ScannerService
     public static function installDependencies(): void
     {
         ChildProcess::start(
-            cmd: ['bash', resource_path('cli/mysafecoding-setup.sh')],
+            cmd: ['bash', resource_path('cli/checkmycode-setup.sh')],
             alias: 'setup',
             cwd: resource_path('cli'),
             env: ScanEngine::processEnvironment(),

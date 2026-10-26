@@ -2049,7 +2049,7 @@
  "semgrep": {
   "results": [
    {
-    "check_id": "resources.scanners.mysafecoding.laravel.env-outside-config",
+    "check_id": "resources.scanners.checkmycode.laravel.env-outside-config",
     "path": "app/Services/ScannerService.php",
     "start": {
      "line": 195,
@@ -2069,7 +2069,7 @@
     }
    },
    {
-    "check_id": "resources.scanners.mysafecoding.laravel.env-outside-config",
+    "check_id": "resources.scanners.checkmycode.laravel.env-outside-config",
     "path": "app/Services/ScannerService.php",
     "start": {
      "line": 196,
@@ -2938,7 +2938,7 @@
  "custom_rules": {
   "findings": [
    {
-    "rule_id": "mysafecoding.hardcoded-credential",
+    "rule_id": "checkmycode.hardcoded-credential",
     "title": "Hardcoded credential detected in source",
     "severity": "CRITICAL",
     "category": "secret",
@@ -2950,7 +2950,7 @@
     "fingerprint": "311bf0b4b19973a51b181d6fd5fc4c1e5ea01a95"
    },
    {
-    "rule_id": "mysafecoding.hardcoded-credential",
+    "rule_id": "checkmycode.hardcoded-credential",
     "title": "Hardcoded credential detected in source",
     "severity": "CRITICAL",
     "category": "secret",

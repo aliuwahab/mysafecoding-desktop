@@ -15,7 +15,7 @@ return [
     | No accounts, no database records, no stored code.
     |
     */
-    'mode' => env('MYSAFECODING_MODE', 'desktop'),
+    'mode' => env('CHECKMYCODE_MODE', 'desktop'),
 
     'default_exclusions' => [
         'vendor',
@@ -34,19 +34,19 @@ return [
     ],
 
     'binaries' => [
-        'trivy' => env('MYSAFECODING_TRIVY_BINARY', 'trivy'),
-        'semgrep' => env('MYSAFECODING_SEMGREP_BINARY', 'semgrep'),
-        'gitleaks' => env('MYSAFECODING_GITLEAKS_BINARY', 'gitleaks'),
+        'trivy' => env('CHECKMYCODE_TRIVY_BINARY', 'trivy'),
+        'semgrep' => env('CHECKMYCODE_SEMGREP_BINARY', 'semgrep'),
+        'gitleaks' => env('CHECKMYCODE_GITLEAKS_BINARY', 'gitleaks'),
     ],
 
-    'scanner_timeout_seconds' => (int) env('MYSAFECODING_SCANNER_TIMEOUT_SECONDS', 600),
+    'scanner_timeout_seconds' => (int) env('CHECKMYCODE_SCANNER_TIMEOUT_SECONDS', 600),
 
     /*
     | Lifecycle (end-of-life) checks call https://endoflife.date. Disable for
     | fully offline scans.
     */
     'endoflife' => [
-        'enabled' => filter_var(env('MYSAFECODING_ENDOFLIFE_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'enabled' => filter_var(env('CHECKMYCODE_ENDOFLIFE_ENABLED', true), FILTER_VALIDATE_BOOL),
         'base_url' => env('ENDOFLIFE_BASE_URL', 'https://endoflife.date'),
         'timeout_seconds' => (int) env('ENDOFLIFE_TIMEOUT_SECONDS', 10),
         'cache_seconds' => (int) env('ENDOFLIFE_CACHE_SECONDS', 86400),
@@ -56,7 +56,7 @@ return [
     'license_policy' => [
         'flagged_licenses' => array_values(array_filter(array_map(
             static fn (string $value): string => trim($value),
-            explode(',', (string) env('MYSAFECODING_FLAGGED_LICENSES', 'AGPL-1.0-only,AGPL-1.0-or-later,AGPL-3.0,AGPL-3.0-only,AGPL-3.0-or-later,SSPL-1.0,GPL-3.0,GPL-3.0-only,GPL-3.0-or-later,BUSL-1.1')),
+            explode(',', (string) env('CHECKMYCODE_FLAGGED_LICENSES', 'AGPL-1.0-only,AGPL-1.0-or-later,AGPL-3.0,AGPL-3.0-only,AGPL-3.0-or-later,SSPL-1.0,GPL-3.0,GPL-3.0-only,GPL-3.0-or-later,BUSL-1.1')),
         ))),
     ],
 
@@ -65,18 +65,19 @@ return [
     | browser from the folder the user picked.
     */
     'web' => [
-        'max_upload_mb' => (int) env('MYSAFECODING_WEB_MAX_UPLOAD_MB', 50),
-        'max_uncompressed_mb' => (int) env('MYSAFECODING_WEB_MAX_UNCOMPRESSED_MB', 200),
-        'max_files' => (int) env('MYSAFECODING_WEB_MAX_FILES', 20000),
-        'results_ttl_minutes' => (int) env('MYSAFECODING_WEB_RESULTS_TTL_MINUTES', 60),
-        'scans_per_hour' => (int) env('MYSAFECODING_WEB_SCANS_PER_HOUR', 10),
+        'max_upload_mb' => (int) env('CHECKMYCODE_WEB_MAX_UPLOAD_MB', 50),
+        'max_uncompressed_mb' => (int) env('CHECKMYCODE_WEB_MAX_UNCOMPRESSED_MB', 200),
+        'max_files' => (int) env('CHECKMYCODE_WEB_MAX_FILES', 20000),
+        'results_ttl_minutes' => (int) env('CHECKMYCODE_WEB_RESULTS_TTL_MINUTES', 60),
+        'scans_per_hour' => (int) env('CHECKMYCODE_WEB_SCANS_PER_HOUR', 10),
         // Keep this outside any git repository: Semgrep honours a parent repo's
         // .gitignore and would silently skip the uploaded files.
-        'workspace_path' => env('MYSAFECODING_WEB_WORKSPACE', sys_get_temp_dir().'/mysafecoding-web-scans'),
+        'workspace_path' => env('CHECKMYCODE_WEB_WORKSPACE', sys_get_temp_dir().'/checkmycode-web-scans'),
         'history_limit' => 20,
     ],
 
-    'docker_image' => env('MYSAFECODING_DOCKER_IMAGE', 'ghcr.io/aliuwahab/mysafecoding:latest'),
+    'docker_image' => env('CHECKMYCODE_DOCKER_IMAGE', 'ghcr.io/aliuwahab/checkmycode:latest'),
 
-    'hosted_url' => env('MYSAFECODING_HOSTED_URL', 'https://www.mysafecoding.com/'),
+    // Optional link to a hosted/team product, shown as a "Hosted scan" button. Empty hides it.
+    'hosted_url' => env('CHECKMYCODE_HOSTED_URL'),
 ];

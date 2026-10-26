@@ -18,8 +18,8 @@ class SecretRedactionTest extends TestCase
     {
         $results = ScanEngine::redactSecrets([
             'custom_rules' => ['findings' => [
-                ['rule_id' => 'mysafecoding.hardcoded-credential', 'category' => 'secret', 'code_snippet' => 'k = "AKIAIOSFODNN7EXAMPLE"'],
-                ['rule_id' => 'mysafecoding.js.eval-usage', 'category' => 'injection', 'code_snippet' => 'eval("payload-string")'],
+                ['rule_id' => 'checkmycode.hardcoded-credential', 'category' => 'secret', 'code_snippet' => 'k = "AKIAIOSFODNN7EXAMPLE"'],
+                ['rule_id' => 'checkmycode.js.eval-usage', 'category' => 'injection', 'code_snippet' => 'eval("payload-string")'],
             ]],
             'semgrep' => ['results' => [
                 ['check_id' => 'generic.secrets.security.detected-stripe-api-key', 'extra' => ['lines' => 'key = "sk_live_abcdefghijkl"']],

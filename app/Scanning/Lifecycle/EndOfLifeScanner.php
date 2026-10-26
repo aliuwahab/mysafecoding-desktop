@@ -91,7 +91,7 @@ class EndOfLifeScanner
             is_array($recommendedRelease) ? data_get($recommendedRelease, 'latest.date') : null,
             data_get($release, 'latest.date'),
         );
-        $warnDays = max(0, (int) config('mysafecoding.endoflife.warn_days', 90));
+        $warnDays = max(0, (int) config('checkmycode.endoflife.warn_days', 90));
         $daysUntilEol = $securitySupportEndsAt !== null
             ? CarbonImmutable::now()->diffInDays($securitySupportEndsAt, false)
             : null;

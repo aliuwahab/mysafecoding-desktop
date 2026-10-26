@@ -16,7 +16,7 @@ class ExampleTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('MySafeCoding')
+            ->assertSee('CheckMyCode')
             ->assertSee('Select Folder');
     }
 

@@ -44,7 +44,7 @@ return [
     /**
      * The Website of your application.
      */
-    'website' => env('NATIVEPHP_APP_WEBSITE', 'https://www.mysafecoding.com'),
+    'website' => env('NATIVEPHP_APP_WEBSITE', 'https://checkmycode.dev'),
 
     /**
      * The default service provider for your application. This provider

@@ -32,7 +32,7 @@ class LaravelRuleEngineTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->fixturePath = sys_get_temp_dir().'/mysafecoding-test-'.uniqid();
+        $this->fixturePath = sys_get_temp_dir().'/checkmycode-test-'.uniqid();
         mkdir($this->fixturePath, 0755, true);
     }
 

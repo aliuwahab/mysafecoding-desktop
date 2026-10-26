@@ -73,7 +73,7 @@ class EphemeralScanStore implements ScanStore
     public function remember(string $id): void
     {
         $ids = array_values(array_unique([$id, ...session(self::SESSION_SCANS, [])]));
-        session([self::SESSION_SCANS => array_slice($ids, 0, (int) config('mysafecoding.web.history_limit', 20))]);
+        session([self::SESSION_SCANS => array_slice($ids, 0, (int) config('checkmycode.web.history_limit', 20))]);
     }
 
     public function owns(string $id): bool
@@ -174,6 +174,6 @@ class EphemeralScanStore implements ScanStore
 
     protected static function ttl(): \DateTimeInterface
     {
-        return now()->addMinutes((int) config('mysafecoding.web.results_ttl_minutes', 60));
+        return now()->addMinutes((int) config('checkmycode.web.results_ttl_minutes', 60));
     }
 }

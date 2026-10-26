@@ -9,21 +9,24 @@ use App\Scanning\Store\EphemeralScanStore;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use ZipArchive;
 
 class WebScanTest extends TestCase
 {
+    use RefreshDatabase;
+
     private string $workspaceRoot;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->workspaceRoot = sys_get_temp_dir().'/mysafecoding-web-test-'.uniqid();
+        $this->workspaceRoot = sys_get_temp_dir().'/checkmycode-web-test-'.uniqid();
         config([
-            'mysafecoding.mode' => 'web',
-            'mysafecoding.web.workspace_path' => $this->workspaceRoot,
+            'checkmycode.mode' => 'web',
+            'checkmycode.web.workspace_path' => $this->workspaceRoot,
         ]);
     }
 
@@ -71,7 +74,7 @@ class WebScanTest extends TestCase
 
     public function test_upload_route_is_not_available_on_desktop(): void
     {
-        config(['mysafecoding.mode' => 'desktop']);
+        config(['checkmycode.mode' => 'desktop']);
 
         $this->post('/scans', ['archive' => $this->zip(['a.php' => '<?php']), 'name' => 'x'], ['Accept' => 'application/json'])
             ->assertNotFound();
@@ -114,6 +117,22 @@ class WebScanTest extends TestCase
         $this->assertSame('completed', $scan['status']);
         $this->assertSame(3, $scan['findings_count']);
         $this->assertDirectoryDoesNotExist($workspace);
+        $this->assertSame(['today' => 1, 'total' => 1], \App\Scanning\ScanCounter::stats());
+    }
+
+    public function test_community_counter_shows_today_and_total(): void
+    {
+        \Illuminate\Support\Facades\DB::table('scan_counts')->insert([
+            ['date' => now()->subDay()->toDateString(), 'scans' => 40],
+            ['date' => now()->toDateString(), 'scans' => 2],
+        ]);
+        \App\Scanning\ScanCounter::increment();
+
+        $this->assertSame(['today' => 3, 'total' => 43], \App\Scanning\ScanCounter::stats());
+
+        $this->get('/')
+            ->assertSee('Scans by the community')
+            ->assertSee('projects scanned in total');
     }
 
     public function test_a_session_cannot_load_someone_elses_scan(): void

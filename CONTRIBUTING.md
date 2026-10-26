@@ -1,6 +1,6 @@
-# Contributing to MySafeCoding
+# Contributing to CheckMyCode
 
-Thanks for helping improve MySafeCoding. One scan engine (`app/Scanning/ScanEngine.php`) powers the NativePHP desktop app, the hosted web scanner and the CLI, so a change to scanning lands in all three.
+Thanks for helping improve CheckMyCode. One scan engine (`app/Scanning/ScanEngine.php`) powers the NativePHP desktop app, the hosted web scanner and the CLI, so a change to scanning lands in all three.
 
 ## Development Setup
 
@@ -17,14 +17,14 @@ Start the desktop app, the web mode, or run the CLI:
 ```bash
 ./bin/native-run
 composer run web
-./bin/mysafecoding scan /path/to/project
+./bin/checkmycode scan /path/to/project
 ```
 
 Run checks before opening a PR:
 
 ```bash
 ./vendor/bin/pint --dirty
-bash -n resources/cli/mysafecoding-setup.sh
+bash -n resources/cli/checkmycode-setup.sh
 for rules in resources/scanners/*.yml; do semgrep scan --validate --config "$rules" --metrics off; done
 php artisan test
 npm run build
@@ -45,7 +45,7 @@ Detection lives in `app/Scanning/ProjectDetector.php`. Map the new type to Semgr
 
 ## Adding Rules
 
-- **Semgrep rules** (preferred, AST-aware) go in `resources/scanners/<language>.yml` with ids prefixed `mysafecoding.`. Validate them with `semgrep scan --validate`, and check them against both a vulnerable and a safe sample. Remember that `patterns:` means AND; use `pattern-either:` for alternatives.
+- **Semgrep rules** (preferred, AST-aware) go in `resources/scanners/<language>.yml` with ids prefixed `checkmycode.`. Validate them with `semgrep scan --validate`, and check them against both a vulnerable and a safe sample. Remember that `patterns:` means AND; use `pattern-either:` for alternatives.
 - **Pattern rules** (regex, any file type) go in `app/Scanning/Rules/PatternRuleScanner.php`. Add a test in `tests/Unit/PatternRuleScannerTest.php`.
 - **Laravel rules** are classes in `app/Services/Scanners/Rules/`, registered in `LaravelRuleEngine`.
 
@@ -59,4 +59,4 @@ Keep export transformation logic in an `App\Services` class so it can be unit te
 
 ## Security Reports
 
-Do not open public issues for vulnerabilities in MySafeCoding itself. Use the process in `SECURITY.md`.
+Do not open public issues for vulnerabilities in CheckMyCode itself. Use the process in `SECURITY.md`.

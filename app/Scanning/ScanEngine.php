@@ -53,7 +53,7 @@ class ScanEngine
     {
         $missing = [];
 
-        foreach (config('mysafecoding.binaries') as $tool => $binary) {
+        foreach (config('checkmycode.binaries') as $tool => $binary) {
             $found = str_contains($binary, '/')
                 ? is_executable($binary)
                 : Process::env(static::processEnvironment())->run(['which', $binary])->successful();
@@ -81,7 +81,7 @@ class ScanEngine
         $this->options = $options + [
             'git_history' => true,
             'redact_secrets' => false,
-            'lifecycle' => (bool) config('mysafecoding.endoflife.enabled', true),
+            'lifecycle' => (bool) config('checkmycode.endoflife.enabled', true),
             'respect_gitignore' => true,
         ];
 
@@ -90,7 +90,7 @@ class ScanEngine
 
         if (is_file($projectPath)) {
             // Scan a single file by giving every engine a one-file directory.
-            $singleFileWorkspace = sys_get_temp_dir().'/mysafecoding-file-'.bin2hex(random_bytes(6));
+            $singleFileWorkspace = sys_get_temp_dir().'/checkmycode-file-'.bin2hex(random_bytes(6));
             $this->files->ensureDirectoryExists($singleFileWorkspace);
             $this->files->copy($projectPath, $singleFileWorkspace.'/'.basename($projectPath));
             $projectPath = $singleFileWorkspace;
@@ -216,9 +216,9 @@ class ScanEngine
         $output = $this->outputDir.'/trivy-raw.json';
         // Never pick up a trivy.yaml from the scanned project (it could swap the DB or settings).
         $trivyConfig = $this->outputDir.'/trivy.yaml';
-        $this->files->put($trivyConfig, "# MySafeCoding passes all Trivy options on the command line.\n");
+        $this->files->put($trivyConfig, "# CheckMyCode passes all Trivy options on the command line.\n");
         $command = [
-            config('mysafecoding.binaries.trivy'), 'fs',
+            config('checkmycode.binaries.trivy'), 'fs',
             '--config', $trivyConfig,
             '--scanners', 'vuln,misconfig,license',
             '--format', 'json',
@@ -244,7 +244,7 @@ class ScanEngine
         $configCounts = ['CRITICAL' => 0, 'HIGH' => 0, 'MEDIUM' => 0, 'LOW' => 0];
         $misconfigurations = [];
         $licenses = [];
-        $flagged = config('mysafecoding.license_policy.flagged_licenses', []);
+        $flagged = config('checkmycode.license_policy.flagged_licenses', []);
 
         foreach ($trivy['Results'] ?? [] as $index => $target) {
             foreach ($target['Vulnerabilities'] ?? [] as $vuln) {
@@ -315,7 +315,7 @@ class ScanEngine
         return $results;
     }
 
-    // ── Semgrep: SAST with registry packs + MySafeCoding custom rules ───────
+    // ── Semgrep: SAST with registry packs + CheckMyCode custom rules ───────
 
     protected function runSemgrep(array $results, string $projectType): array
     {
@@ -390,7 +390,7 @@ class ScanEngine
      */
     protected function semgrepCommand(array $configs, string $output): array
     {
-        $command = [config('mysafecoding.binaries.semgrep'), 'scan'];
+        $command = [config('checkmycode.binaries.semgrep'), 'scan'];
         foreach ($configs as $config) {
             array_push($command, '--config', $config);
         }
@@ -411,8 +411,8 @@ class ScanEngine
         return [
             'results' => array_map(static function (array $finding): array {
                 unset($finding['extra']['fingerprint'], $finding['extra']['validation_state'], $finding['extra']['engine_kind']);
-                // Semgrep prefixes local rule files with their path: "resources.scanners.mysafecoding.x" -> "mysafecoding.x"
-                $finding['check_id'] = preg_replace('/^.*?\b(mysafecoding\.)/', '$1', $finding['check_id'] ?? '');
+                // Semgrep prefixes local rule files with their path: "resources.scanners.checkmycode.x" -> "checkmycode.x"
+                $finding['check_id'] = preg_replace('/^.*?\b(checkmycode\.)/', '$1', $finding['check_id'] ?? '');
 
                 return $finding;
             }, $semgrep['results'] ?? []),
@@ -450,7 +450,7 @@ class ScanEngine
         $this->files->put($config, $this->gitleaksConfig());
 
         $command = [
-            config('mysafecoding.binaries.gitleaks'),
+            config('checkmycode.binaries.gitleaks'),
             $useHistory ? 'git' : 'dir',
             '--config', $config,
             '--report-format', 'json',
@@ -488,7 +488,7 @@ class ScanEngine
             $this->exclusions,
         );
 
-        return "[extend]\nuseDefault = true\n\n[allowlist]\ndescription = \"MySafeCoding exclusions\"\npaths = [\n".implode("\n", $paths)."\n]\n";
+        return "[extend]\nuseDefault = true\n\n[allowlist]\ndescription = \"CheckMyCode exclusions\"\npaths = [\n".implode("\n", $paths)."\n]\n";
     }
 
     // ── Built-in rule packs, .env audit, lifecycle ──────────────────────────
@@ -504,7 +504,7 @@ class ScanEngine
             $this->log("Framework rules: {$laravel['summary']['total']} issues.", 'laravel_rules');
         }
 
-        $this->log('Custom rules: running MySafeCoding pattern rules for '.ProjectDetector::label($projectType).'...', 'custom_rules');
+        $this->log('Custom rules: running CheckMyCode pattern rules for '.ProjectDetector::label($projectType).'...', 'custom_rules');
         $custom = (new PatternRuleScanner)->scan($this->projectPath, $projectType, $this->exclusions);
         $results['custom_rules'] = $custom;
         $results['summary']['custom_rules'] = $custom['summary'];
@@ -589,10 +589,10 @@ class ScanEngine
         try {
             return Process::path($this->projectPath)
                 ->env(static::processEnvironment())
-                ->timeout((int) config('mysafecoding.scanner_timeout_seconds', 600))
+                ->timeout((int) config('checkmycode.scanner_timeout_seconds', 600))
                 ->run($command);
         } catch (\Illuminate\Process\Exceptions\ProcessTimedOutException $e) {
-            $this->log('Timed out after '.config('mysafecoding.scanner_timeout_seconds').'s.', $scanner, 'error');
+            $this->log('Timed out after '.config('checkmycode.scanner_timeout_seconds').'s.', $scanner, 'error');
 
             return $e->result;
         }

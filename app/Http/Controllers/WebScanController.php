@@ -18,7 +18,7 @@ class WebScanController extends Controller
         abort_unless(AppServiceProvider::isWebMode(), 404);
 
         $validated = $request->validate([
-            'archive' => ['required', 'file', 'max:'.((int) config('mysafecoding.web.max_upload_mb', 50) * 1024)],
+            'archive' => ['required', 'file', 'max:'.((int) config('checkmycode.web.max_upload_mb', 50) * 1024)],
             'name' => ['required', 'string', 'max:120'],
             'exclusions' => ['array', 'max:100'],
             'exclusions.*' => ['string', 'max:200'],
@@ -26,7 +26,7 @@ class WebScanController extends Controller
 
         $exclusions = array_values($validated['exclusions'] ?? []);
         $projectName = Str::of($validated['name'])->replaceMatches('/[^\w.\- ]/u', '')->trim()->limit(80, '')->toString() ?: 'project';
-        $workspace = rtrim(config('mysafecoding.web.workspace_path'), '/').'/'.Str::random(32);
+        $workspace = rtrim(config('checkmycode.web.workspace_path'), '/').'/'.Str::random(32);
 
         try {
             $count = ArchiveExtractor::fromConfig()->extract($request->file('archive')->getRealPath(), $workspace.'/src');

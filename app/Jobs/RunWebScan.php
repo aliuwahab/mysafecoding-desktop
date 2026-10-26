@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Scanning\ScanCounter;
 use App\Scanning\ScanEngine;
 use App\Scanning\Store\EphemeralScanStore;
 use Illuminate\Bus\Queueable;
@@ -51,6 +52,7 @@ class RunWebScan implements ShouldQueue
                 'findings_count' => $results['summary']['findings_total'] ?? 0,
                 'completed_at' => now()->toIso8601String(),
             ]);
+            ScanCounter::increment();
         } catch (\Throwable $e) {
             report($e);
             EphemeralScanStore::appendLog($id, 'Scan failed: '.$e->getMessage(), 'system', 'error');

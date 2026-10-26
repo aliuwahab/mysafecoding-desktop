@@ -6,7 +6,7 @@ class SemgrepRulesets
 {
     /**
      * Security rulesets: Semgrep registry packs for the detected stack plus
-     * the MySafeCoding custom rules shipped in resources/scanners.
+     * the CheckMyCode custom rules shipped in resources/scanners.
      *
      * @return list<string>
      */
@@ -65,6 +65,6 @@ class SemgrepRulesets
 
     public static function displayName(string $config): string
     {
-        return str_starts_with($config, 'p/') ? $config : 'mysafecoding/'.basename($config, '.yml');
+        return str_starts_with($config, 'p/') ? $config : 'checkmycode/'.basename($config, '.yml');
     }
 }

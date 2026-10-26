@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Scan;
 use App\Providers\AppServiceProvider;
+use App\Scanning\ScanCounter;
 use App\Scanning\ScanEngine;
 use App\Scanning\ScanGrade;
 use App\Scanning\Store\ScanRecord;
@@ -58,7 +59,7 @@ class Scanner extends Component
     public function mount(): void
     {
         $this->webMode = AppServiceProvider::isWebMode();
-        $this->exclusions = config('mysafecoding.default_exclusions');
+        $this->exclusions = config('checkmycode.default_exclusions');
         $this->missingTools = ScanEngine::missingTools();
         $this->showSetup = ! empty($this->missingTools);
 
@@ -324,7 +325,7 @@ class Scanner extends Component
 
         $this->selectedHistoryId = $scan->id;
         $this->projectPath = $scan->projectPath;
-        $this->exclusions = $scan->exclusions ?: config('mysafecoding.default_exclusions');
+        $this->exclusions = $scan->exclusions ?: config('checkmycode.default_exclusions');
         $this->status = $scan->status === 'pending' ? 'running' : $scan->status;
         $this->results = $scan->results;
         $this->compareWithScanId = null;
@@ -344,7 +345,7 @@ class Scanner extends Component
         }
 
         return $this->saveFile(
-            'mysafecoding-report.json',
+            'checkmycode-report.json',
             json_encode($this->results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
             'Save Scan Report',
         );
@@ -357,7 +358,7 @@ class Scanner extends Component
         }
 
         return $this->saveFile(
-            'mysafecoding-report.sarif',
+            'checkmycode-report.sarif',
             json_encode(SarifExporter::fromResults($this->results), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
             'Save SARIF Report',
         );
@@ -366,8 +367,8 @@ class Scanner extends Component
     public function exportGithubActionsWorkflow()
     {
         return $this->saveFile(
-            'mysafecoding.yml',
-            GitHubActionsWorkflowGenerator::generate($this->exclusions, config('mysafecoding.docker_image')),
+            'checkmycode.yml',
+            GitHubActionsWorkflowGenerator::generate($this->exclusions, config('checkmycode.docker_image')),
             'Save GitHub Actions Workflow',
         );
     }
@@ -395,7 +396,10 @@ class Scanner extends Component
 
     public function openComprehensiveScan(): void
     {
-        $url = config('mysafecoding.hosted_url');
+        $url = config('checkmycode.hosted_url');
+        if (! $url) {
+            return;
+        }
 
         if ($this->webMode) {
             $this->js('window.open('.json_encode($url).', "_blank", "noopener")');
@@ -490,6 +494,12 @@ class Scanner extends Component
     }
 
     #[Computed]
+    public function scanStats(): array
+    {
+        return ScanCounter::stats();
+    }
+
+    #[Computed]
     public function history(): Collection
     {
         return $this->store()->history();
@@ -499,9 +509,9 @@ class Scanner extends Component
     {
         return view('livewire.scanner', [
             'webLimits' => $this->webMode ? [
-                'maxUploadMb' => (int) config('mysafecoding.web.max_upload_mb'),
-                'maxFiles' => (int) config('mysafecoding.web.max_files'),
-                'ttlMinutes' => (int) config('mysafecoding.web.results_ttl_minutes'),
+                'maxUploadMb' => (int) config('checkmycode.web.max_upload_mb'),
+                'maxFiles' => (int) config('checkmycode.web.max_files'),
+                'ttlMinutes' => (int) config('checkmycode.web.results_ttl_minutes'),
                 'uploadUrl' => route('web-scans.store'),
             ] : null,
         ])->layout('layouts.app');

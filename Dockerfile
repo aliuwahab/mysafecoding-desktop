@@ -1,7 +1,7 @@
-# MySafeCoding: one image for the CLI and the hosted web scanner.
+# CheckMyCode: one image for the CLI and the hosted web scanner.
 #
-#   CLI:  docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/mysafecoding scan /src
-#   Web:  docker run --rm -p 8080:8080 ghcr.io/aliuwahab/mysafecoding web
+#   CLI:  docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/checkmycode scan /src
+#   Web:  docker run --rm -p 8080:8080 ghcr.io/aliuwahab/checkmycode web
 
 # ── Frontend assets ─────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS assets
@@ -35,7 +35,7 @@ RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/
     && ln -s /opt/semgrep/bin/semgrep /usr/local/bin/semgrep
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-COPY docker/php.ini /usr/local/etc/php/conf.d/mysafecoding.ini
+COPY docker/php.ini /usr/local/etc/php/conf.d/checkmycode.ini
 
 WORKDIR /app
 COPY composer.json composer.lock ./
@@ -46,19 +46,19 @@ COPY --from=assets /app/public/build ./public/build
 RUN composer dump-autoload --optimize --no-dev \
     && php artisan package:discover --ansi \
     && mkdir -p /data/cache /data/workspaces /data/trivy \
-    && chmod +x docker/entrypoint.sh bin/mysafecoding
+    && chmod +x docker/entrypoint.sh bin/checkmycode
 
 ENV APP_ENV=production \
     APP_DEBUG=false \
     LOG_CHANNEL=stderr \
-    MYSAFECODING_MODE=web \
+    CHECKMYCODE_MODE=web \
     DB_CONNECTION=sqlite \
     DB_DATABASE=/data/database.sqlite \
     CACHE_STORE=file \
     CACHE_FILE_PATH=/data/cache \
     SESSION_DRIVER=file \
     QUEUE_CONNECTION=database \
-    MYSAFECODING_WEB_WORKSPACE=/data/workspaces \
+    CHECKMYCODE_WEB_WORKSPACE=/data/workspaces \
     TRIVY_CACHE_DIR=/data/trivy \
     SEMGREP_SEND_METRICS=off \
     PHP_CLI_SERVER_WORKERS=8

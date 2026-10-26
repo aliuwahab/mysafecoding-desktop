@@ -52,15 +52,15 @@ class SarifExporter
             'runs' => [[
                 'tool' => [
                     'driver' => [
-                        'name' => 'MySafeCoding',
-                        'informationUri' => 'https://www.mysafecoding.com/',
+                        'name' => 'CheckMyCode',
+                        'informationUri' => 'https://checkmycode.dev/',
                         'rules' => array_values($rules),
                     ],
                 ],
                 'results' => $sarifResults,
                 'properties' => [
                     'projectType' => $results['project_type'] ?? 'unknown',
-                    'generatedBy' => 'mysafecoding',
+                    'generatedBy' => 'checkmycode',
                 ],
             ]],
         ];

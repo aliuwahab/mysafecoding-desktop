@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
-# MySafeCoding CLI — Setup Script
+# CheckMyCode CLI — Setup Script
 # Installs Trivy, Semgrep, and Gitleaks on macOS via Homebrew
-# Run: chmod +x mysafecoding-setup.sh
+# Run: chmod +x checkmycode-setup.sh
 # =============================================================================
 
 set -e  # Exit on any error
@@ -24,7 +24,7 @@ step() { echo -e "\n${BOLD}${BLUE}── $1 ────────────
 
 echo ""
 echo -e "${BOLD}████████████████████████████████████████████████████${RESET}"
-echo -e "${BOLD}   MySafeCoding CLI — Setup (macOS)    ${RESET}"
+echo -e "${BOLD}   CheckMyCode CLI — Setup (macOS)    ${RESET}"
 echo -e "${BOLD}████████████████████████████████████████████████████${RESET}"
 echo ""
 
@@ -76,6 +76,6 @@ echo "  - Trivy:    $(trivy --version 2>&1 | head -1)"
 echo "  - Semgrep:  $(semgrep --version)"
 echo "  - Gitleaks: $(gitleaks version 2>&1)"
 echo ""
-echo -e "${BOLD}Next step:${RESET} Return to MySafeCoding and press Recheck, or from a checkout run:"
-echo "  ./bin/mysafecoding scan /path/to/your/project"
+echo -e "${BOLD}Next step:${RESET} Return to CheckMyCode and press Recheck, or from a checkout run:"
+echo "  ./bin/checkmycode scan /path/to/your/project"
 echo ""

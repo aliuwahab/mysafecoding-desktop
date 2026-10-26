@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'MySafeCoding'),
+    'name' => env('APP_NAME', 'CheckMyCode'),
 
     /*
     |--------------------------------------------------------------------------

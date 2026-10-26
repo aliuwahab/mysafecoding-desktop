@@ -4,8 +4,8 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('mysafecoding:prune-workspaces {--minutes=60}', function (Filesystem $files) {
-    $root = config('mysafecoding.web.workspace_path');
+Artisan::command('checkmycode:prune-workspaces {--minutes=60}', function (Filesystem $files) {
+    $root = config('checkmycode.web.workspace_path');
     $cutoff = now()->subMinutes((int) $this->option('minutes'))->getTimestamp();
     $pruned = 0;
 
@@ -19,6 +19,6 @@ Artisan::command('mysafecoding:prune-workspaces {--minutes=60}', function (Files
     $this->info("Pruned {$pruned} stale scan workspaces.");
 })->purpose('Delete uploaded code left behind by scans that crashed (web mode)');
 
-if (config('mysafecoding.mode') === 'web') {
-    Schedule::command('mysafecoding:prune-workspaces')->everyFifteenMinutes();
+if (config('checkmycode.mode') === 'web') {
+    Schedule::command('checkmycode:prune-workspaces')->everyFifteenMinutes();
 }

@@ -1,5 +1,5 @@
 rules:
-  - id: mysafecoding.python.sql-injection-format
+  - id: checkmycode.python.sql-injection-format
     message: SQL query built with string formatting
     severity: ERROR
     languages: [python]
@@ -9,13 +9,13 @@ rules:
           - pattern: $DB.execute("..." .format(...))
           - pattern: $DB.execute(f"...")
 
-  - id: mysafecoding.python.yaml-unsafe-load
+  - id: checkmycode.python.yaml-unsafe-load
     message: yaml.load() without Loader is unsafe
     severity: ERROR
     languages: [python]
     pattern: yaml.load($DATA)
 
-  - id: mysafecoding.python.jinja2-autoescape-disabled
+  - id: checkmycode.python.jinja2-autoescape-disabled
     message: Jinja2 autoescape is disabled
     severity: ERROR
     languages: [python]
@@ -23,7 +23,7 @@ rules:
       - pattern: jinja2.Environment(..., autoescape=False, ...)
       - pattern: jinja2.Environment(autoescape=False)
 
-  - id: mysafecoding.python.requests-no-timeout
+  - id: checkmycode.python.requests-no-timeout
     message: requests call without timeout
     severity: WARNING
     languages: [python]
@@ -34,7 +34,7 @@ rules:
           - pattern: requests.put($URL)
           - pattern: requests.delete($URL)
 
-  - id: mysafecoding.python.assert-in-production
+  - id: checkmycode.python.assert-in-production
     message: assert statement used for security check
     severity: WARNING
     languages: [python]

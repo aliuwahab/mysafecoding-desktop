@@ -31,7 +31,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->backgroundColor('#0f172a')
             ->rememberState()
             ->titleBarHidden()
-            ->title('MySafeCoding');
+            ->title('CheckMyCode');
     }
 
     public function phpIni(): array

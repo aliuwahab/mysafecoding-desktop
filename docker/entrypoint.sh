@@ -6,7 +6,7 @@ case "${1:-web}" in
     scan)
         # CLI mode: no web server, no database.
         shift
-        exec php artisan mysafecoding:scan "$@"
+        exec php artisan checkmycode:scan "$@"
         ;;
 
     web)
@@ -20,7 +20,7 @@ case "${1:-web}" in
         php artisan config:cache >/dev/null
         php artisan view:cache >/dev/null
 
-        for i in $(seq 1 "${MYSAFECODING_WORKERS:-2}"); do
+        for i in $(seq 1 "${CHECKMYCODE_WORKERS:-2}"); do
             php artisan queue:work --timeout=1800 --tries=1 --sleep=1 &
         done
         php artisan schedule:work >/dev/null &

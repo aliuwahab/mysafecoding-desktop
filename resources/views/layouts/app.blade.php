@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=1400">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('mysafecoding.mode') === 'web' ? 'MySafeCoding — Open-Source Security Scanner' : 'MySafeCoding — Local Security Scanner' }}</title>
+    <title>{{ config('checkmycode.mode') === 'web' ? 'CheckMyCode — Open-Source Security Scanner' : 'CheckMyCode — Local Security Scanner' }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />

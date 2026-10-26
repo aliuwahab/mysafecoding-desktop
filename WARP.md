@@ -1,10 +1,10 @@
-# MySafeCoding Desktop — Product Roadmap (WARP)
+# CheckMyCode — Product Roadmap (WARP)
 
-This document tracks the feature roadmap for MySafeCoding Desktop, the free open-source local security scanner for popular languages and frameworks.
+This document tracks the feature roadmap for CheckMyCode, the free open-source local security scanner for popular languages and frameworks.
 
 ## Vision
 
-MySafeCoding Desktop is the fast, local-first security scanner developers can use before moving to the hosted MySafeCoding workflow. It runs entirely on the developer's machine: no accounts, no SaaS dependency, no data leaving the laptop. The desktop app is the entry point to the broader MySafeCoding platform at https://www.mysafecoding.com/.
+CheckMyCode is the fast, local-first security scanner developers can use before moving to the hosted MySafeCoding workflow. It runs entirely on the developer's machine: no accounts, no SaaS dependency, no data leaving the laptop. The desktop app is the entry point to the broader MySafeCoding platform at https://www.mysafecoding.com/.
 
 ---
 
@@ -31,7 +31,7 @@ MySafeCoding Desktop is the fast, local-first security scanner developers can us
 ---
 
 ### v2.0: One engine, three surfaces
-- [x] Shared PHP scan engine for desktop, web and CLI (`mysafecoding:scan`)
+- [x] Shared PHP scan engine for desktop, web and CLI (`checkmycode:scan`)
 - [x] Hosted web mode: browser folder/file picking, client-side exclusions, scan-and-delete, no accounts or database
 - [x] Docker image for CLI, CI and self-hosting the web scanner
 - [x] Ported hosted-platform engines: custom Semgrep rules, cross-language pattern rules, endoflife.date lifecycle checks

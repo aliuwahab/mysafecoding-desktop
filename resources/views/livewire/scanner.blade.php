@@ -83,7 +83,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><path d="M12 2 4 5v7c0 4.5 3.4 8.3 8 10 4.6-1.7 8-5.5 8-10V5l-8-3Z"/></svg>
         </div>
         <div style="display:flex;flex-direction:column;line-height:1;">
-            <span class="serif" style="font-size:19px;color:var(--fg-1);letter-spacing:-0.01em;">MySafeCoding</span>
+            <span class="serif" style="font-size:19px;color:var(--fg-1);letter-spacing:-0.01em;">CheckMyCode</span>
             <span style="font-size:10.5px;color:var(--fg-3);margin-top:2px;letter-spacing:0.04em;">{{ $webMode ? 'open-source web scanner' : 'v2.0 · multi-stack local scanner' }}</span>
         </div>
     </div>
@@ -100,12 +100,34 @@
                 <span class="kbd" style="background:rgba(0,0,0,0.25);border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.85);">N</span>
             </span>
         </button>
-        <button wire:click="openComprehensiveScan" title="Open MySafeCoding hosted scans" style="height:30px;padding:0 10px;display:flex;align-items:center;gap:8px;color:var(--fg-2);border:1px dashed var(--line-1);border-radius:7px;font-size:11.5px;justify-content:center;">
+        @if (config('checkmycode.hosted_url'))
+        <button wire:click="openComprehensiveScan" title="Open CheckMyCode hosted scans" style="height:30px;padding:0 10px;display:flex;align-items:center;gap:8px;color:var(--fg-2);border:1px dashed var(--line-1);border-radius:7px;font-size:11.5px;justify-content:center;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-hi);"><path d="M12 3v5M12 16v5M3 12h5M16 12h5M6 6l3 3M15 15l3 3M6 18l3-3M15 9l3-3"/></svg>
             <span>Hosted scan</span>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-4);"><path d="m9 6 6 6-6 6"/></svg>
         </button>
+        @endif
     </div>
+
+    @if ($webMode)
+    {{-- Community scan counter: real completed scans by everyone on this site --}}
+    @php $stats = $this->scanStats; @endphp
+    <div style="margin:0 12px 12px;padding:12px 14px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:10px;" title="Completed scans by everyone using this site. Only the count is stored, never the code.">
+        <div style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);margin-bottom:8px;">Scans by the community</div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;">
+            <div>
+                <div class="serif" style="font-size:28px;line-height:1;color:var(--fg-1);">{{ number_format($stats['total']) }}</div>
+                <div style="font-size:10.5px;color:var(--fg-3);margin-top:3px;">projects scanned in total</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="mono" style="font-size:15px;font-weight:600;color:var(--sev-ok);display:flex;align-items:center;gap:5px;justify-content:flex-end;">
+                    <span class="pulse-dot" style="width:6px;height:6px;border-radius:50%;background:var(--sev-ok);display:block;"></span>{{ number_format($stats['today']) }}
+                </div>
+                <div style="font-size:10.5px;color:var(--fg-3);margin-top:3px;">today</div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     {{-- History list --}}
     <div class="scroll" style="flex:1;overflow-y:auto;padding:0 8px 12px;">
@@ -184,7 +206,7 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-medium);"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
             </div>
             <h2 style="font-size:18px;font-weight:600;color:var(--fg-1);margin:0 0 8px;">Setup Required</h2>
-            <p style="font-size:13px;color:var(--fg-3);margin:0;">{{ $webMode ? 'This server is missing scanner tools. Use the Docker image, which ships with all of them.' : 'MySafeCoding needs the following tools installed:' }}</p>
+            <p style="font-size:13px;color:var(--fg-3);margin:0;">{{ $webMode ? 'This server is missing scanner tools. Use the Docker image, which ships with all of them.' : 'CheckMyCode needs the following tools installed:' }}</p>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
             @foreach (['trivy', 'semgrep', 'gitleaks'] as $tool)
@@ -772,7 +794,7 @@
     </div>
 </div>
 
-{{-- RULES (Laravel rule pack + MySafeCoding custom rules) --------------- --}}
+{{-- RULES (Laravel rule pack + CheckMyCode custom rules) --------------- --}}
 @elseif ($activeTab === 'rules')
 @php
   $ruleFindings = array_merge(
@@ -781,7 +803,7 @@
   );
 @endphp
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    @include('livewire.partials.tab-header', ['title' => 'Rule findings', 'count' => $rulesTotal, 'subtitle' => ($isLaravelProject ? 'Laravel rule pack + ' : '').'MySafeCoding custom rules · '.\App\Scanning\ProjectDetector::label($scanProjectType ?? 'unknown')])
+    @include('livewire.partials.tab-header', ['title' => 'Rule findings', 'count' => $rulesTotal, 'subtitle' => ($isLaravelProject ? 'Laravel rule pack + ' : '').'CheckMyCode custom rules · '.\App\Scanning\ProjectDetector::label($scanProjectType ?? 'unknown')])
     <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @forelse ($ruleFindings as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => $finding['_scanner'], 'icon' => '<path d="M12 3 4 8v8l8 5 8-5V8l-8-5Z"/><path d="m4 8 8 5 8-5M12 13v8"/>'])

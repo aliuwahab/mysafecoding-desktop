@@ -11,9 +11,9 @@ use Illuminate\Console\Command;
 class ScanCommand extends Command
 {
     /** Prefix for machine-readable log lines consumed by the desktop app. */
-    public const MACHINE_PREFIX = '@@mysafecoding ';
+    public const MACHINE_PREFIX = '@@checkmycode ';
 
-    protected $signature = 'mysafecoding:scan
+    protected $signature = 'checkmycode:scan
         {path=. : Project folder or single file to scan}
         {--exclude=* : Folder or file to exclude (repeatable)}
         {--no-defaults : Do not apply the default exclusions (vendor, node_modules, ...)}
@@ -46,11 +46,11 @@ class ScanCommand extends Command
         }
 
         $outputDir = $this->option('output-dir')
-            ?: sys_get_temp_dir().'/mysafecoding-'.date('Ymd_His').'-'.bin2hex(random_bytes(3));
+            ?: sys_get_temp_dir().'/checkmycode-'.date('Ymd_His').'-'.bin2hex(random_bytes(3));
         $outputDir = $this->absolutePath($outputDir);
 
         $exclusions = array_merge(
-            $this->option('no-defaults') ? [] : config('mysafecoding.default_exclusions'),
+            $this->option('no-defaults') ? [] : config('checkmycode.default_exclusions'),
             (array) $this->option('exclude'),
         );
 
@@ -65,7 +65,7 @@ class ScanCommand extends Command
 
         if (! $machine && ! $quietLogs) {
             $this->newLine();
-            $this->line('  <options=bold>MySafeCoding</> security scan');
+            $this->line('  <options=bold>CheckMyCode</> security scan');
             $this->line('  <fg=gray>Target:</> '.$realPath);
             $this->newLine();
         }
@@ -90,7 +90,7 @@ class ScanCommand extends Command
         try {
             $results = $engine->run($realPath, $outputDir, $exclusions, $log, [
                 'git_history' => ! $this->option('no-history'),
-                'lifecycle' => ! $this->option('offline') && config('mysafecoding.endoflife.enabled', true),
+                'lifecycle' => ! $this->option('offline') && config('checkmycode.endoflife.enabled', true),
             ]);
         } catch (\Throwable $e) {
             $log('Scan failed: '.$e->getMessage(), 'system', 'error');

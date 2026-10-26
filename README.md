@@ -1,13 +1,13 @@
-# MySafeCoding
+# CheckMyCode
 
 Open-source security scanner for the projects developers ship every day. Point it at a folder (or a single file) and it finds:
 
 | Engine | What it checks | Powered by |
 |---|---|---|
 | **Dependencies** | Every lockfile against public CVE databases (NVD, GitHub Advisories, OSV): Composer, npm/yarn/pnpm, pip/Poetry/uv, Bundler, Go modules, Cargo, Maven/Gradle, NuGet, Mix and more | Trivy |
-| **Code** | Language-aware SAST with the Semgrep registry packs for the detected stack, plus MySafeCoding's own rules in `resources/scanners/` | Semgrep |
+| **Code** | Language-aware SAST with the Semgrep registry packs for the detected stack, plus CheckMyCode's own rules in `resources/scanners/` | Semgrep |
 | **Secrets** | API keys, tokens and passwords in files and (desktop/CLI) full git history | Gitleaks |
-| **Rules** | MySafeCoding pattern rules for PHP, Python/Django, JS/TS, Ruby, Go, plus the 20-rule Laravel pack | built in |
+| **Rules** | CheckMyCode pattern rules for PHP, Python/Django, JS/TS, Ruby, Go, plus the 20-rule Laravel pack | built in |
 | **Config / IaC** | Dockerfile, Kubernetes, Terraform, CloudFormation and Helm misconfiguration | Trivy |
 | **Lifecycle** | Runtimes and frameworks that are out of (or nearly out of) security support | endoflife.date |
 | **.env audit** | Debug mode, weak keys, insecure drivers | built in |
@@ -34,10 +34,10 @@ Self-host it:
 ```bash
 docker compose up -d          # → http://localhost:8080
 # or
-docker run --rm -p 8080:8080 ghcr.io/aliuwahab/mysafecoding web
+docker run --rm -p 8080:8080 ghcr.io/aliuwahab/checkmycode web
 ```
 
-Limits are set with environment variables (see `.env.example`): upload size, file count, scans per hour per IP, result TTL, and concurrent workers (`MYSAFECODING_WORKERS`).
+Limits are set with environment variables (see `.env.example`): upload size, file count, scans per hour per IP, result TTL, and concurrent workers (`CHECKMYCODE_WORKERS`).
 
 ### 2. Desktop: NativePHP app
 
@@ -55,12 +55,12 @@ On first launch the app checks for `trivy`, `semgrep` and `gitleaks` and can ins
 
 ```bash
 # Docker: no local toolchain needed
-docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/mysafecoding scan /src
+docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/checkmycode scan /src
 
 # From a checkout (needs PHP 8.2+, trivy, semgrep, gitleaks)
-./bin/mysafecoding scan ~/Code/my-app
-./bin/mysafecoding scan . --format sarif --output report.sarif --fail-on high
-./bin/mysafecoding scan . --exclude tests --exclude fixtures --offline
+./bin/checkmycode scan ~/Code/my-app
+./bin/checkmycode scan . --format sarif --output report.sarif --fail-on high
+./bin/checkmycode scan . --exclude tests --exclude fixtures --offline
 ```
 
 | Option | |
@@ -86,14 +86,14 @@ app/Scanning/
   Lifecycle/                endoflife.date support checks
   Store/                    DatabaseScanStore (desktop) · EphemeralScanStore (web: cache + session)
   Web/ArchiveExtractor      Safe upload extraction (zip-slip, symlink, size and count limits)
-app/Console/Commands/ScanCommand.php   `mysafecoding:scan`: CLI, Docker and the desktop child process
+app/Console/Commands/ScanCommand.php   `checkmycode:scan`: CLI, Docker and the desktop child process
 app/Jobs/RunWebScan.php                Web: scan, then delete the uploaded code
 app/Livewire/Scanner.php               The UI for both desktop and web
-resources/scanners/*.yml               MySafeCoding custom Semgrep rules
+resources/scanners/*.yml               CheckMyCode custom Semgrep rules
 resources/js/web-scan.js               Browser folder picking, filtering, zipping, upload
 ```
 
-- **Desktop** runs `php artisan mysafecoding:scan --machine` as a NativePHP child process and streams its log lines into SQLite.
+- **Desktop** runs `php artisan checkmycode:scan --machine` as a NativePHP child process and streams its log lines into SQLite.
 - **Web** extracts the upload, queues `RunWebScan`, and the UI polls the cache for logs and results.
 - **CLI** calls the engine directly.
 

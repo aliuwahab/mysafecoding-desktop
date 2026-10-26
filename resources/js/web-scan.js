@@ -286,7 +286,7 @@ document.addEventListener('alpine:init', () => {
                     if (request.status >= 200 && request.status < 300 && body.id) {
                         resolve(body);
                     } else if (request.status === 429) {
-                        reject(new Error('Scan limit reached for now. Please try again later, or run MySafeCoding locally with Docker or the desktop app.'));
+                        reject(new Error('Scan limit reached for now. Please try again later, or run CheckMyCode locally with Docker or the desktop app.'));
                     } else if (request.status === 413) {
                         reject(new Error('The upload is too large for this server.'));
                     } else {

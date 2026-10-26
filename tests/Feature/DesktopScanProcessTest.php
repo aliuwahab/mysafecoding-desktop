@@ -11,7 +11,7 @@ use ReflectionMethod;
 use Tests\TestCase;
 
 /**
- * The desktop app runs `mysafecoding:scan --machine` as a NativePHP child
+ * The desktop app runs `checkmycode:scan --machine` as a NativePHP child
  * process; these tests drive the same parsing the process events go through.
  */
 class DesktopScanProcessTest extends TestCase
@@ -65,7 +65,7 @@ class DesktopScanProcessTest extends TestCase
 
     public function test_completed_process_stores_results_from_results_json(): void
     {
-        $outputDir = sys_get_temp_dir().'/mysafecoding-desktop-test-'.uniqid();
+        $outputDir = sys_get_temp_dir().'/checkmycode-desktop-test-'.uniqid();
         mkdir($outputDir);
         $results = json_decode(file_get_contents(base_path('tests/Fixtures/laravel-results.json')), true);
         file_put_contents($outputDir.'/results.json', json_encode($results));

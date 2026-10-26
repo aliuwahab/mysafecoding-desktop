@@ -9,7 +9,7 @@ use RecursiveIteratorIterator;
 use SplFileInfo;
 
 /**
- * Regex-based rule pack shared with the hosted MySafeCoding platform.
+ * Regex-based rule pack shared with the hosted CheckMyCode platform.
  *
  * Laravel projects are covered by the dedicated LaravelRuleEngine plus the
  * custom Semgrep rules, so only the universal rules run for them here.
@@ -144,7 +144,7 @@ class PatternRuleScanner
         return [
             [
                 'pattern' => '/["\'](?:sk_live_[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9\-_]{20,}|xoxb-[0-9a-zA-Z]{24,}|ya29\.[0-9A-Za-z\-_]{60,})["\']/',
-                'rule_id' => 'mysafecoding.hardcoded-credential',
+                'rule_id' => 'checkmycode.hardcoded-credential',
                 'title' => 'Hardcoded credential detected in source',
                 'severity' => 'critical',
                 'category' => 'secret',
@@ -153,7 +153,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/(?:password|passwd|secret|token|api_?key)\s*=\s*["\'][^"\']{8,}["\']/',
-                'rule_id' => 'mysafecoding.plaintext-secret-assignment',
+                'rule_id' => 'checkmycode.plaintext-secret-assignment',
                 'title' => 'Plaintext secret assignment detected',
                 'severity' => 'high',
                 'category' => 'secret',
@@ -219,7 +219,7 @@ class PatternRuleScanner
         return [
             [
                 'pattern' => '/\b(eval|shell_exec|system|passthru|exec)\s*\(/',
-                'rule_id' => 'mysafecoding.php.command-execution',
+                'rule_id' => 'checkmycode.php.command-execution',
                 'title' => 'Dynamic command execution primitive detected',
                 'severity' => 'critical',
                 'category' => 'code-execution',
@@ -228,7 +228,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\b(DB::raw|selectRaw|whereRaw|orderByRaw)\s*\(/',
-                'rule_id' => 'mysafecoding.php.raw-sql',
+                'rule_id' => 'checkmycode.php.raw-sql',
                 'title' => 'Raw SQL helper detected',
                 'severity' => 'high',
                 'category' => 'injection',
@@ -237,7 +237,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/withoutVerifying\s*\(/',
-                'rule_id' => 'mysafecoding.php.tls-verification-disabled',
+                'rule_id' => 'checkmycode.php.tls-verification-disabled',
                 'title' => 'HTTP client TLS verification disabled',
                 'severity' => 'high',
                 'category' => 'transport-security',
@@ -246,7 +246,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\benv\s*\(/',
-                'rule_id' => 'mysafecoding.php.env-outside-config',
+                'rule_id' => 'checkmycode.php.env-outside-config',
                 'title' => 'env() usage detected outside config files',
                 'severity' => 'medium',
                 'category' => 'configuration',
@@ -256,7 +256,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/::(create|forceCreate)\s*\(\s*(\$[A-Za-z_][A-Za-z0-9_]*->all\s*\(\s*\)|request\s*\(\s*\)\s*->all\s*\(\s*\))\s*\)/',
-                'rule_id' => 'mysafecoding.php.request-all-create',
+                'rule_id' => 'checkmycode.php.request-all-create',
                 'title' => 'Request data passed directly into create()',
                 'severity' => 'high',
                 'category' => 'mass-assignment',
@@ -265,7 +265,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/->(update|fill|forceFill)\s*\(\s*(\$[A-Za-z_][A-Za-z0-9_]*->all\s*\(\s*\)|request\s*\(\s*\)\s*->all\s*\(\s*\))\s*\)/',
-                'rule_id' => 'mysafecoding.php.request-all-update',
+                'rule_id' => 'checkmycode.php.request-all-update',
                 'title' => 'Request data passed directly into update/fill()',
                 'severity' => 'high',
                 'category' => 'mass-assignment',
@@ -274,7 +274,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/::unguard\s*\(/',
-                'rule_id' => 'mysafecoding.php.model-unguard',
+                'rule_id' => 'checkmycode.php.model-unguard',
                 'title' => 'Global mass-assignment protection disabled',
                 'severity' => 'high',
                 'category' => 'mass-assignment',
@@ -283,7 +283,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/protected\s+\$guarded\s*=\s*\[\s*\]\s*;/',
-                'rule_id' => 'mysafecoding.php.empty-guarded',
+                'rule_id' => 'checkmycode.php.empty-guarded',
                 'title' => 'Model guarded array is empty',
                 'severity' => 'medium',
                 'category' => 'mass-assignment',
@@ -292,7 +292,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/Gate::before\s*\(.*(?:=>\s*true|return\s+true)/',
-                'rule_id' => 'mysafecoding.php.gate-before-allow-all',
+                'rule_id' => 'checkmycode.php.gate-before-allow-all',
                 'title' => 'Gate::before unconditionally allows all abilities',
                 'severity' => 'critical',
                 'category' => 'authorization',
@@ -301,7 +301,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/withoutMiddleware\s*\(.*(VerifyCsrfToken|ValidateCsrfToken)/',
-                'rule_id' => 'mysafecoding.php.csrf-disabled-route',
+                'rule_id' => 'checkmycode.php.csrf-disabled-route',
                 'title' => 'Route explicitly disables CSRF middleware',
                 'severity' => 'medium',
                 'category' => 'csrf',
@@ -310,7 +310,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/loginUsingId\s*\(\s*(\$[A-Za-z_][A-Za-z0-9_]*->|request\s*\(\s*\)\s*->)/',
-                'rule_id' => 'mysafecoding.php.login-using-id-request',
+                'rule_id' => 'checkmycode.php.login-using-id-request',
                 'title' => 'Request-controlled loginUsingId usage detected',
                 'severity' => 'high',
                 'category' => 'authentication',
@@ -319,7 +319,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/(redirect|Redirect::to|redirect\(\))\s*\(\s*(\$request|\$_GET|\$_POST|request\s*\(\s*\))/',
-                'rule_id' => 'mysafecoding.php.open-redirect',
+                'rule_id' => 'checkmycode.php.open-redirect',
                 'title' => 'User-controlled redirect target detected',
                 'severity' => 'high',
                 'category' => 'redirect',
@@ -328,7 +328,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\bunserialize\s*\(\s*(\$[A-Za-z_][A-Za-z0-9_]*->|request\s*\(\s*\))/',
-                'rule_id' => 'mysafecoding.php.unserialize-user-input',
+                'rule_id' => 'checkmycode.php.unserialize-user-input',
                 'title' => 'PHP unserialize() called with user-controlled input',
                 'severity' => 'critical',
                 'category' => 'deserialization',
@@ -337,7 +337,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\b(md5|sha1)\s*\(\s*\$/',
-                'rule_id' => 'mysafecoding.php.weak-hash',
+                'rule_id' => 'checkmycode.php.weak-hash',
                 'title' => 'Weak hashing algorithm detected',
                 'severity' => 'medium',
                 'category' => 'cryptography',
@@ -402,7 +402,7 @@ class PatternRuleScanner
         return [
             [
                 'pattern' => '/\beval\s*\(/',
-                'rule_id' => 'mysafecoding.python.eval-usage',
+                'rule_id' => 'checkmycode.python.eval-usage',
                 'title' => 'eval() usage detected',
                 'severity' => 'critical',
                 'category' => 'code-execution',
@@ -411,7 +411,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\b(subprocess\.(call|run|Popen|check_output)|os\.system)\s*\(/',
-                'rule_id' => 'mysafecoding.python.subprocess-usage',
+                'rule_id' => 'checkmycode.python.subprocess-usage',
                 'title' => 'Subprocess or os.system call detected',
                 'severity' => 'high',
                 'category' => 'code-execution',
@@ -420,7 +420,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\bpickle\.loads?\s*\(/',
-                'rule_id' => 'mysafecoding.python.pickle-deserialization',
+                'rule_id' => 'checkmycode.python.pickle-deserialization',
                 'title' => 'Python pickle deserialization detected',
                 'severity' => 'critical',
                 'category' => 'deserialization',
@@ -429,7 +429,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\b__import__\s*\(/',
-                'rule_id' => 'mysafecoding.python.dynamic-import',
+                'rule_id' => 'checkmycode.python.dynamic-import',
                 'title' => 'Dynamic __import__() usage detected',
                 'severity' => 'high',
                 'category' => 'code-execution',
@@ -438,7 +438,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/hashlib\.(md5|sha1)\s*\(/',
-                'rule_id' => 'mysafecoding.python.weak-hash',
+                'rule_id' => 'checkmycode.python.weak-hash',
                 'title' => 'Weak hashing algorithm detected',
                 'severity' => 'medium',
                 'category' => 'cryptography',
@@ -447,7 +447,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\bverify\s*=\s*False\b/',
-                'rule_id' => 'mysafecoding.python.ssl-verification-disabled',
+                'rule_id' => 'checkmycode.python.ssl-verification-disabled',
                 'title' => 'TLS certificate verification disabled in HTTP request',
                 'severity' => 'high',
                 'category' => 'transport-security',
@@ -484,7 +484,7 @@ class PatternRuleScanner
             foreach ($lines as $index => $line) {
                 if (preg_match('/^\s*DEBUG\s*=\s*True\b/', $line)) {
                     $findings[] = $this->makeFinding(
-                        ruleId: 'mysafecoding.django.debug-enabled',
+                        ruleId: 'checkmycode.django.debug-enabled',
                         title: 'Django DEBUG is set to True',
                         severity: 'critical',
                         category: 'configuration',
@@ -498,7 +498,7 @@ class PatternRuleScanner
 
                 if (preg_match('/^\s*ALLOWED_HOSTS\s*=\s*\[[\s\'\"]*\*/', $line)) {
                     $findings[] = $this->makeFinding(
-                        ruleId: 'mysafecoding.django.allowed-hosts-wildcard',
+                        ruleId: 'checkmycode.django.allowed-hosts-wildcard',
                         title: 'Django ALLOWED_HOSTS is set to wildcard',
                         severity: 'high',
                         category: 'configuration',
@@ -512,7 +512,7 @@ class PatternRuleScanner
 
                 if (preg_match("/SECRET_KEY\s*=\s*['\"][^'\"]{10,}['\"]/", $line) && ! str_contains($line, 'os.environ') && ! str_contains($line, 'env(')) {
                     $findings[] = $this->makeFinding(
-                        ruleId: 'mysafecoding.django.hardcoded-secret-key',
+                        ruleId: 'checkmycode.django.hardcoded-secret-key',
                         title: 'Django SECRET_KEY appears to be hardcoded',
                         severity: 'critical',
                         category: 'secret',
@@ -584,7 +584,7 @@ class PatternRuleScanner
         return [
             [
                 'pattern' => '/\beval\s*\(/',
-                'rule_id' => 'mysafecoding.js.eval-usage',
+                'rule_id' => 'checkmycode.js.eval-usage',
                 'title' => 'eval() usage detected',
                 'severity' => 'critical',
                 'category' => 'code-execution',
@@ -594,7 +594,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/innerHTML\s*=(?!=)/',
-                'rule_id' => 'mysafecoding.js.unsafe-innerhtml',
+                'rule_id' => 'checkmycode.js.unsafe-innerhtml',
                 'title' => 'Unsafe innerHTML assignment detected',
                 'severity' => 'high',
                 'category' => 'xss',
@@ -604,7 +604,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/document\.write\s*\(/',
-                'rule_id' => 'mysafecoding.js.document-write',
+                'rule_id' => 'checkmycode.js.document-write',
                 'title' => 'document.write() usage detected',
                 'severity' => 'high',
                 'category' => 'xss',
@@ -614,7 +614,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\brequire\s*\(\s*(?:child_process|exec|spawn)/',
-                'rule_id' => 'mysafecoding.js.child-process-require',
+                'rule_id' => 'checkmycode.js.child-process-require',
                 'title' => 'child_process module imported',
                 'severity' => 'medium',
                 'category' => 'code-execution',
@@ -623,7 +623,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/process\.env\.NODE_ENV\s*!==\s*["\']production["\']/',
-                'rule_id' => 'mysafecoding.js.dev-mode-check',
+                'rule_id' => 'checkmycode.js.dev-mode-check',
                 'title' => 'Non-production environment check detected in code',
                 'severity' => 'info',
                 'category' => 'configuration',
@@ -632,7 +632,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/new\s+Function\s*\(/',
-                'rule_id' => 'mysafecoding.js.new-function',
+                'rule_id' => 'checkmycode.js.new-function',
                 'title' => 'new Function() usage detected',
                 'severity' => 'high',
                 'category' => 'code-execution',
@@ -694,7 +694,7 @@ class PatternRuleScanner
         return [
             [
                 'pattern' => '/\beval\s*\(/',
-                'rule_id' => 'mysafecoding.ruby.eval-usage',
+                'rule_id' => 'checkmycode.ruby.eval-usage',
                 'title' => 'eval() usage detected',
                 'severity' => 'critical',
                 'category' => 'code-execution',
@@ -703,7 +703,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\bsystem\s*\(|`[^`]*`|\bexec\s*\(|\bspawn\s*\(/',
-                'rule_id' => 'mysafecoding.ruby.shell-execution',
+                'rule_id' => 'checkmycode.ruby.shell-execution',
                 'title' => 'Shell command execution detected',
                 'severity' => 'high',
                 'category' => 'code-execution',
@@ -712,7 +712,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/Marshal\.load\s*\(/',
-                'rule_id' => 'mysafecoding.ruby.marshal-deserialization',
+                'rule_id' => 'checkmycode.ruby.marshal-deserialization',
                 'title' => 'Ruby Marshal.load() deserialization detected',
                 'severity' => 'critical',
                 'category' => 'deserialization',
@@ -721,7 +721,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/params\.permit!\s*\(?\s*\)?/',
-                'rule_id' => 'mysafecoding.rails.permit-all',
+                'rule_id' => 'checkmycode.rails.permit-all',
                 'title' => 'Strong parameters permit! (allow-all) detected',
                 'severity' => 'high',
                 'category' => 'mass-assignment',
@@ -730,7 +730,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/\.where\s*\(\s*["\'][^"\']*#\{/',
-                'rule_id' => 'mysafecoding.rails.sql-injection-interpolation',
+                'rule_id' => 'checkmycode.rails.sql-injection-interpolation',
                 'title' => 'SQL query with string interpolation detected',
                 'severity' => 'critical',
                 'category' => 'injection',
@@ -739,7 +739,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/render\s+inline\s*:/',
-                'rule_id' => 'mysafecoding.rails.inline-render',
+                'rule_id' => 'checkmycode.rails.inline-render',
                 'title' => 'Inline template rendering detected',
                 'severity' => 'high',
                 'category' => 'xss',
@@ -800,7 +800,7 @@ class PatternRuleScanner
         return [
             [
                 'pattern' => '/exec\.Command\s*\(/',
-                'rule_id' => 'mysafecoding.go.command-execution',
+                'rule_id' => 'checkmycode.go.command-execution',
                 'title' => 'exec.Command usage detected',
                 'severity' => 'medium',
                 'category' => 'code-execution',
@@ -809,7 +809,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/InsecureSkipVerify\s*:\s*true/',
-                'rule_id' => 'mysafecoding.go.tls-insecure-skip-verify',
+                'rule_id' => 'checkmycode.go.tls-insecure-skip-verify',
                 'title' => 'TLS InsecureSkipVerify set to true',
                 'severity' => 'high',
                 'category' => 'transport-security',
@@ -818,7 +818,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/fmt\.Sprintf\s*\(.*SELECT|fmt\.Sprintf\s*\(.*INSERT|fmt\.Sprintf\s*\(.*UPDATE|fmt\.Sprintf\s*\(.*DELETE/',
-                'rule_id' => 'mysafecoding.go.sql-string-format',
+                'rule_id' => 'checkmycode.go.sql-string-format',
                 'title' => 'SQL query built with fmt.Sprintf',
                 'severity' => 'critical',
                 'category' => 'injection',
@@ -827,7 +827,7 @@ class PatternRuleScanner
             ],
             [
                 'pattern' => '/md5\.New\(\)|md5\.Sum\(/',
-                'rule_id' => 'mysafecoding.go.weak-hash-md5',
+                'rule_id' => 'checkmycode.go.weak-hash-md5',
                 'title' => 'Weak MD5 hash function detected',
                 'severity' => 'medium',
                 'category' => 'cryptography',

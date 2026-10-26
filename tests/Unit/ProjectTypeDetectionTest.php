@@ -12,7 +12,7 @@ class ProjectTypeDetectionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->fixturePath = sys_get_temp_dir().'/mysafecoding-project-type-'.uniqid();
+        $this->fixturePath = sys_get_temp_dir().'/checkmycode-project-type-'.uniqid();
         mkdir($this->fixturePath, 0755, true);
     }
 
