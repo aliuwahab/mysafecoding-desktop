@@ -31,5 +31,5 @@ jobs:
 
       - name: Validate custom Semgrep rules
         run: |
-          python3 -m pip install --quiet semgrep
+          pipx install semgrep
           for rules in resources/scanners/*.yml; do semgrep scan --validate --config "$rules" --metrics off; done
