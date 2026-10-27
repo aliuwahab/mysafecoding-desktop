@@ -4,6 +4,10 @@
 [![GitHub stars](https://img.shields.io/github/stars/aliuwahab/mysafecoding-desktop?style=social)](https://github.com/aliuwahab/mysafecoding-desktop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+> **CheckMyCode is a free, open-source security scanner.** Drop in your project and in about a minute you get an A–F grade with the vulnerable dependencies, risky code, leaked secrets and outdated frameworks it found, and nothing about your code is stored.
+
+Powered by Trivy, OSV-Scanner, Semgrep, Gitleaks, zizmor and endoflife.date, plus CheckMyCode's own framework rules. Built with Laravel, Livewire and NativePHP.
+
 **Free and open source.** Scan in the browser at **[checkmycode.dev](https://checkmycode.dev)** with no account, or run it locally with the desktop app, the CLI or Docker.
 
 Open-source security scanner for the projects developers ship every day. Point it at a folder (or a single file) and it finds:
