@@ -498,7 +498,10 @@ class Scanner extends Component
     #[Computed]
     public function scanStats(): array
     {
-        return ScanCounter::stats();
+        $stats = ScanCounter::stats();
+        $stats['today'] += (int) config('checkmycode.web.counter_offset', 0);
+
+        return $stats;
     }
 
     #[Computed]

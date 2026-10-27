@@ -80,6 +80,8 @@ return [
         // .gitignore and would silently skip the uploaded files.
         'workspace_path' => env('CHECKMYCODE_WEB_WORKSPACE', sys_get_temp_dir().'/checkmycode-web-scans'),
         'history_limit' => 20,
+        // Added to today's community scan count when it is displayed (stored counts stay real).
+        'counter_offset' => max(0, (int) env('CHECKMYCODE_COUNTER_OFFSET', 0)),
     ],
 
     'docker_image' => env('CHECKMYCODE_DOCKER_IMAGE', 'ghcr.io/aliuwahab/checkmycode:latest'),

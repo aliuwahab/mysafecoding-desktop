@@ -179,4 +179,13 @@ class WebScanTest extends TestCase
             ->assertSee('id="9-license"', false)
             ->assertDontSee('googleapis');
     }
+
+    public function test_counter_offset_is_added_to_the_displayed_count_only(): void
+    {
+        config(['checkmycode.web.counter_offset' => 2]);
+
+        $this->get('/')->assertSee('projects scanned today');
+        Livewire::test(Scanner::class)->assertSee('>2<', false);
+        $this->assertSame(0, \App\Scanning\ScanCounter::stats()['today']);
+    }
 }
