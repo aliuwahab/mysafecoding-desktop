@@ -196,6 +196,8 @@ class RulePackTest extends TestCase
             'ex sql' => ['phoenix', 'lib/app/q.ex', 'Repo.query("SELECT * FROM users WHERE name = \'#{name}\'")', 'elixir.sql-injection', 'Repo.query("SELECT * FROM users WHERE name = $1", [name])'],
             'ex fragment' => ['phoenix', 'lib/app/q.ex', 'where: fragment("lower(#{field}) = ?", ^v)', 'elixir.sql-injection', 'where: fragment("lower(?) = ?", u.name, ^v)'],
             'heex raw' => ['phoenix', 'lib/app_web/components/c.html.heex', '<%= raw(@bio) %>', 'phoenix.raw-html', '<%= @bio %>'],
+            'heex raw variable' => ['phoenix', 'lib/app_web/layouts/app.html.heex', 'message: raw(flash)', 'phoenix.raw-html', '<%= raw(MyAppWeb.Email.footer(:html)) %>'],
+            'heex raw json' => ['phoenix', 'lib/app_web/page.html.heex', 'var data = <%= raw(Jason.encode!(@data)) %>;', 'phoenix.raw-json-in-script', 'var data = <%= raw(Jason.encode!(@data, escape: :html_safe)) %>;'],
             'phoenix redirect' => ['phoenix', 'lib/app_web/controllers/a.ex', 'redirect(conn, external: params["next"])', 'phoenix.open-redirect', 'redirect(conn, to: ~p"/home")'],
             'ex weak hash' => ['elixir', 'lib/app/h.ex', ':crypto.hash(:md5, data)', 'elixir.weak-hash', ':crypto.hash(:sha256, data)'],
             'phoenix check_origin' => ['phoenix', 'config/prod.exs', 'config :app, AppWeb.Endpoint, check_origin: false', 'phoenix.check-origin-disabled', null],

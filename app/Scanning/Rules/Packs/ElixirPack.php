@@ -71,15 +71,29 @@ class ElixirPack extends RulePack
                 'fix' => 'Use placeholders: Repo.query("... WHERE id = $1", [id]) or fragment("lower(?)", ^value).',
             ],
             [
-                'pattern' => '/\braw\s*\(/',
+                // Assigns and variables only: raw(MyApp.Helper.fun(...)) renders
+                // markup the app builds itself and is left out to keep noise down.
+                'pattern' => '/\braw\s*\(\s*(@|assigns\.|[a-z_])/',
                 'extensions' => self::TEMPLATES,
                 'rule_id' => 'checkmycode.phoenix.raw-html',
                 'title' => 'Raw HTML output (escaping disabled)',
                 'severity' => 'high',
                 'skip' => '#(^|/)deps/#',
                 'category' => 'xss',
-                'why' => 'raw/1 renders a value without escaping; user content there becomes XSS.',
+                'why' => 'raw/1 renders an assign or variable without escaping; if it holds user content, that becomes XSS.',
                 'fix' => 'Render the value normally, or sanitize it with HtmlSanitizeEx first.',
+            ],
+            [
+                'pattern' => '/\braw\s*\(\s*(Jason|JSON|Poison)\.encode!?\s*\(/',
+                'unless' => '/escape:\s*:html_safe/',
+                'extensions' => self::TEMPLATES,
+                'rule_id' => 'checkmycode.phoenix.raw-json-in-script',
+                'title' => 'JSON printed raw without HTML-safe escaping',
+                'severity' => 'medium',
+                'skip' => '#(^|/)deps/#',
+                'category' => 'xss',
+                'why' => 'Inside a <script> tag, a value containing </script> ends the script early and lets the rest run as HTML (XSS).',
+                'fix' => 'Encode with Jason.encode!(data, escape: :html_safe), or pass the data in a data- attribute instead.',
             ],
             [
                 'pattern' => '/redirect\s*\(\s*conn\s*,\s*external:\s*(params|conn\.params|conn\.query_params|\w+\[)/',
