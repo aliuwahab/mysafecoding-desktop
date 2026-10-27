@@ -66,9 +66,7 @@
 
     {{-- Brand --}}
     <div style="padding:16px 16px 10px;display:flex;align-items:center;gap:9px;">
-        <div style="width:26px;height:26px;border-radius:7px;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 16%,transparent);border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><path d="M12 2 4 5v7c0 4.5 3.4 8.3 8 10 4.6-1.7 8-5.5 8-10V5l-8-3Z"/></svg>
-        </div>
+        <img src="{{ asset('logo.svg') }}" width="28" height="28" alt="" style="flex-shrink:0;">
         <div style="display:flex;flex-direction:column;line-height:1;">
             <span class="serif" style="font-size:19px;color:var(--fg-1);letter-spacing:-0.01em;">CheckMyCode</span>
             <span style="font-size:10.5px;color:var(--fg-3);margin-top:2px;letter-spacing:0.04em;">{{ $webMode ? 'open-source web scanner' : 'v2.0 · multi-stack local scanner' }}</span>

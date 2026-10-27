@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Terms of Use · CheckMyCode</title>
     <meta name="description" content="Terms of use for CheckMyCode, the free and open-source security scanner. Your code is never stored.">
+    @include('partials.favicons')
     @vite(['resources/css/app.css'])
     <style>
         :root {
@@ -22,7 +23,6 @@
         .wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
         .bar { display: flex; align-items: center; justify-content: space-between; height: 56px; }
         .brand { display: flex; align-items: center; gap: 9px; color: var(--fg-1); text-decoration: none; font-family: var(--font-display); font-size: 21px; }
-        .brand i { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); }
         .back { font-size: 13px; color: var(--fg-2); text-decoration: none; border: 1px solid var(--line-1); border-radius: 7px; padding: 6px 12px; }
         h1 { font-family: var(--font-display); font-weight: 400; color: var(--fg-1); font-size: 44px; line-height: 1.1; margin: 44px 0 6px; letter-spacing: -0.01em; }
         h2 { color: var(--fg-1); font-size: 17px; font-weight: 600; margin: 34px 0 8px; }
@@ -42,7 +42,7 @@
 <header>
     <div class="wrap bar">
         <a class="brand" href="{{ url('/') }}">
-            <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f53003" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 4.5 3.4 8.3 8 10 4.6-1.7 8-5.5 8-10V5l-8-3Z"/></svg></i>
+            <img src="{{ asset('logo.svg') }}" width="24" height="24" alt="">
             CheckMyCode
         </a>
         <a class="back" href="{{ url('/') }}">← Back to the scanner</a>

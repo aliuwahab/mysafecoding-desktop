@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
     <title>@yield('code') · @yield('title') · CheckMyCode</title>
+    @include('partials.favicons')
     @if (file_exists(public_path('build/manifest.json')))
         @vite(['resources/css/app.css'])
     @endif
@@ -24,7 +25,6 @@
         header, footer { padding: 0 20px; }
         header { height: 56px; display: flex; align-items: center; border-bottom: 1px solid var(--line-1); }
         .brand { display: flex; align-items: center; gap: 9px; color: var(--fg-1); text-decoration: none; font-family: var(--font-display); font-size: 21px; }
-        .brand i { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); }
         main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
         .card { max-width: 560px; width: 100%; text-align: center; }
         .code { font-family: var(--font-display); font-size: 120px; line-height: 0.9; color: var(--accent); letter-spacing: -0.04em; }
@@ -43,7 +43,7 @@
 <body>
 <header>
     <a class="brand" href="{{ url('/') }}">
-        <i><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f53003" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v7c0 4.5 3.4 8.3 8 10 4.6-1.7 8-5.5 8-10V5l-8-3Z"/></svg></i>
+        <img src="{{ asset('logo.svg') }}" width="24" height="24" alt="">
         CheckMyCode
     </a>
 </header>

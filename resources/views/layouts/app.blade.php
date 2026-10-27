@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('checkmycode.mode') === 'web' ? 'CheckMyCode — Open-Source Security Scanner' : 'CheckMyCode — Local Security Scanner' }}</title>
+    @include('partials.favicons')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
     <style>
