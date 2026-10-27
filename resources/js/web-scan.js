@@ -53,6 +53,36 @@ function formatBytes(bytes) {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/**
+ * The biggest folders (two levels deep) in a selection, so it is easy to see
+ * what to exclude when an upload is over the size limit. A folder that is
+ * nearly all of its parent is left out: excluding the parent covers it.
+ */
+export function largestFolders(entries, limit = 8) {
+    const sizes = new Map();
+    for (const { path, file } of entries) {
+        const segments = path.split('/').slice(0, -1);
+        for (let depth = 1; depth <= Math.min(2, segments.length); depth++) {
+            const folder = segments.slice(0, depth).join('/');
+            sizes.set(folder, (sizes.get(folder) ?? 0) + file.size);
+        }
+    }
+
+    const picked = [];
+    for (const [path, bytes] of [...sizes].sort((a, b) => b[1] - a[1])) {
+        const parent = picked.find((folder) => path.startsWith(folder.path + '/'));
+        if (bytes < 256 * 1024 || (parent && bytes > parent.bytes * 0.8)) {
+            continue;
+        }
+        picked.push({ path, bytes, label: formatBytes(bytes) });
+        if (picked.length === limit) {
+            break;
+        }
+    }
+
+    return picked;
+}
+
 function readDirectoryEntries(reader) {
     return new Promise((resolve, reject) => reader.readEntries(resolve, reject));
 }
@@ -156,6 +186,10 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 // storage blocked: the modal simply shows again next time
             }
+        },
+
+        get largestFolders() {
+            return largestFolders(this.files);
         },
 
         get selectionSummary() {
@@ -310,7 +344,8 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
             if (this.files.length > config.maxFiles) {
-                this.error = `This selection has ${this.files.length.toLocaleString()} files; the limit is ${config.maxFiles.toLocaleString()}. Add exclusions or scan a sub-folder.`;
+                this.error = `This selection has ${this.files.length.toLocaleString()} files; the limit is ${config.maxFiles.toLocaleString()}. Exclude some of the largest folders (opened for you) or scan a sub-folder.`;
+                this.$dispatch('open-exclusions');
                 return;
             }
 
@@ -326,7 +361,8 @@ document.addEventListener('alpine:init', () => {
                 const archive = await zipAsync(data);
 
                 if (archive.byteLength > config.maxUploadMb * 1024 * 1024) {
-                    throw new Error(`The compressed project is ${formatBytes(archive.byteLength)}; the limit is ${config.maxUploadMb} MB. Add exclusions or scan a sub-folder.`);
+                    this.$dispatch('open-exclusions');
+                    throw new Error(`The compressed project is ${formatBytes(archive.byteLength)}; the limit is ${config.maxUploadMb} MB. Exclude some of the largest folders (opened for you) or scan a sub-folder.`);
                 }
 
                 const form = new FormData();

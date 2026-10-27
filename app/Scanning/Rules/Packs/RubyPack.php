@@ -32,13 +32,17 @@ class RubyPack extends RulePack
                 'fix' => 'Replace with a safe expression parser or structured data handling.',
             ],
             [
-                'pattern' => '/\bsystem\s*\(|\bexec\s*\(|\bspawn\s*\(|`[^`]*#\{[^`]*`|%x[\(\{\[]/',
+                // Only commands a shell parses from a built string: interpolated,
+                // concatenated or passed in a variable. system("git", "status") and
+                // literal commands are safe, and conn.exec(sql) is a database call.
+                'pattern' => '/(?<![.\w])(Kernel\.)?(system|exec|spawn)(\s*\(\s*|\s+)("[^"]*#\{|["\'][^"\']*["\']\s*\+|[a-z_@][\w.@\[\]:"\']*\s*(\)|$))|\b(Open3\.(capture2e?|capture3|popen2e?|popen3|pipeline\w*)|IO\.popen)\s*\(?\s*("[^"]*#\{|["\'][^"\']*["\']\s*\+|[a-z_@][\w.@\[\]:"\']*\s*(\)|$))|`[^`]*#\{[^`]*`|%x[\(\{\[][^\)\}\]]*#\{/',
+                'skip' => '#(^|/)(lib/tasks|bin|script|scripts|db/seeds|config)/|(^|/)(Rakefile|Gemfile|Guardfile|Capfile)$|\.(rake|gemspec)$#',
                 'rule_id' => 'checkmycode.ruby.shell-execution',
-                'title' => 'Shell command execution detected',
+                'title' => 'Shell command built from a dynamic string',
                 'severity' => 'high',
-                'category' => 'code-execution',
-                'why' => 'Shell execution with user-controlled input leads to command injection.',
-                'fix' => 'Use parameterized shell calls and avoid interpolating user input into shell strings.',
+                'category' => 'command-injection',
+                'why' => 'The shell parses the whole string, so an interpolated or concatenated value can append extra commands (command injection).',
+                'fix' => 'Pass the program and arguments separately, e.g. system("convert", input, output) or Open3.capture3("git", "log", ref).',
             ],
             [
                 'pattern' => '/Marshal\.load\s*\(/',

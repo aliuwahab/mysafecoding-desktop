@@ -31,6 +31,17 @@ return [
         '.venv',
         '__pycache__',
         'target',
+        'deps',
+        '_build',
+        '.svelte-kit',
+        '.gradle',
+        'obj',
+    ],
+
+    // One-click additions offered in the Exclude panel when not already excluded.
+    'suggested_exclusions' => [
+        'deps', '_build', 'tmp', 'log', 'logs', 'public/assets', 'public/packs', 'priv/static',
+        'vendor/bundle', '.terraform', 'bin', 'obj', 'out', '.angular', '.turbo', '.expo', 'Pods', 'docs', 'fixtures', 'tests',
     ],
 
     'binaries' => [

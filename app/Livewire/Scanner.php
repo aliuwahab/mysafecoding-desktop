@@ -59,7 +59,7 @@ class Scanner extends Component
     public function mount(): void
     {
         $this->webMode = AppServiceProvider::isWebMode();
-        $this->exclusions = config('checkmycode.default_exclusions');
+        $this->exclusions = session('checkmycode.exclusions', config('checkmycode.default_exclusions'));
         $this->missingTools = ScanEngine::missingTools();
         $this->showSetup = ! empty($this->missingTools);
 
@@ -209,20 +209,39 @@ class Scanner extends Component
         $this->projectPath = $name ? mb_substr($name, 0, 120) : null;
     }
 
-    public function addExclusion(): void
+    /**
+     * Add one or more folders: "deps, _build priv/static" adds three.
+     */
+    public function addExclusion(?string $value = null): void
     {
-        $exclusion = trim($this->newExclusion);
-        if ($exclusion && ! in_array($exclusion, $this->exclusions)) {
-            $this->exclusions[] = $exclusion;
+        foreach (preg_split('/[\s,]+/', $value ?? $this->newExclusion, -1, PREG_SPLIT_NO_EMPTY) as $exclusion) {
+            $exclusion = trim(str_replace('\\', '/', $exclusion), '/');
+            if ($exclusion !== '' && $exclusion !== '.' && ! str_contains($exclusion, '..') && ! in_array($exclusion, $this->exclusions, true)) {
+                $this->exclusions[] = mb_substr($exclusion, 0, 200);
+            }
         }
         $this->newExclusion = '';
-        $this->dispatch('exclusions-changed', exclusions: $this->exclusions);
+        $this->exclusionsChanged();
     }
 
     public function removeExclusion(int $index): void
     {
         unset($this->exclusions[$index]);
         $this->exclusions = array_values($this->exclusions);
+        $this->exclusionsChanged();
+    }
+
+    public function resetExclusions(): void
+    {
+        $this->exclusions = config('checkmycode.default_exclusions');
+        session()->forget('checkmycode.exclusions');
+        $this->dispatch('exclusions-changed', exclusions: $this->exclusions);
+    }
+
+    protected function exclusionsChanged(): void
+    {
+        $this->exclusions = array_slice($this->exclusions, 0, 100);
+        session(['checkmycode.exclusions' => $this->exclusions]);
         $this->dispatch('exclusions-changed', exclusions: $this->exclusions);
     }
 

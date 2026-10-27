@@ -97,7 +97,7 @@
             .m-configbar { flex-wrap: wrap; padding: 10px 12px !important; gap: 8px !important; }
             .m-pick span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             .m-configbar > button:last-child { margin-left: auto; }
-            .m-exclusions { order: 5; flex-basis: 100% !important; overflow-x: auto !important; scrollbar-width: none; }
+            .m-exclusions { order: 5; flex-basis: 100% !important; }
             .m-privacy { flex-wrap: wrap; padding: 8px 12px !important; row-gap: 4px !important; }
             .m-privacy > span[style*="flex:1"] { display: none; }
             .m-logrow { grid-template-columns: 76px 1fr !important; gap: 10px !important; padding: 2px 12px !important; }

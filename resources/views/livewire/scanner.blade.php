@@ -258,18 +258,67 @@
         </button>
     @endif
 
-    <div class="m-exclusions" style="flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
-        <span style="font-size:10.5px;color:var(--fg-3);text-transform:uppercase;letter-spacing:0.08em;margin-right:2px;white-space:nowrap;">Exclude</span>
-        @foreach ($exclusions as $index => $exc)
-            <span class="mono" style="display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 8px;font-size:11px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:5px;color:var(--fg-2);white-space:nowrap;">
-                {{ $exc }}
-                <button wire:click="removeExclusion({{ $index }})" style="color:var(--fg-4);display:flex;padding:1px;border-radius:3px;">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                </button>
-            </span>
-        @endforeach
-        <input wire:model="newExclusion" wire:keydown.enter="addExclusion" placeholder="+ add"
-            style="width:70px;font-family:var(--font-mono);font-size:11px;padding:3px 6px;background:transparent;border:1px dashed var(--line-1);border-radius:5px;outline:none;color:var(--fg-1);" />
+    {{-- Exclusions: a compact button; the panel holds the list, so it never runs off the bar. --}}
+    <div class="m-exclusions" x-data="{ open: false }" @open-exclusions.window="open = true" @keydown.escape.window="open = false" style="flex:1;min-width:0;position:relative;">
+        <button type="button" @click="open = !open" :aria-expanded="open" title="Folders skipped before scanning" style="display:inline-flex;align-items:center;gap:7px;padding:0 10px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;color:var(--fg-2);max-width:100%;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);flex-shrink:0;"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+            <span>Exclude</span>
+            <span class="mono" style="font-size:10.5px;padding:1px 6px;border-radius:9px;background:var(--bg-3);color:var(--fg-1);">{{ count($exclusions) }}</span>
+            <span class="mono m-hide" style="font-size:11px;color:var(--fg-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ implode(', ', array_slice($exclusions, 0, 4)) }}{{ count($exclusions) > 4 ? ', …' : '' }}</span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);flex-shrink:0;"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+
+        <div x-show="open" x-cloak @click.outside="open = false" x-transition.opacity.duration.120ms
+            style="position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:min(440px, calc(100vw - 24px));background:var(--bg-2);border:1px solid var(--line-1);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,0.45);padding:14px;display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+                <span style="font-size:12.5px;color:var(--fg-1);font-weight:600;">Excluded folders</span>
+                <button type="button" wire:click="resetExclusions" style="font-size:11px;color:var(--fg-3);text-decoration:underline;">Reset to defaults</button>
+            </div>
+
+            <form wire:submit="addExclusion()" style="display:flex;gap:6px;">
+                <input wire:model="newExclusion" x-ref="exclusionInput" x-init="$watch('open', v => v && $nextTick(() => $refs.exclusionInput.focus()))"
+                    placeholder="Folder name or path, e.g. deps, priv/static" aria-label="Folders to exclude"
+                    style="flex:1;min-width:0;font-family:var(--font-mono);font-size:12px;padding:7px 9px;background:var(--bg-1);border:1px solid var(--line-1);border-radius:6px;outline:none;color:var(--fg-1);" />
+                <button type="submit" style="padding:0 12px;background:var(--accent);color:#fff;border-radius:6px;font-size:12px;font-weight:600;">Add</button>
+            </form>
+            <span style="font-size:11px;color:var(--fg-3);margin-top:-6px;">Separate several with commas or spaces. A name like <span class="mono">deps</span> matches that folder anywhere; a path like <span class="mono">priv/static</span> matches from the project root.</span>
+
+            <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;">
+                @forelse ($exclusions as $index => $exc)
+                    <span wire:key="exc-{{ $exc }}" class="mono" style="display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 8px;font-size:11px;background:var(--bg-1);border:1px solid var(--line-1);border-radius:5px;color:var(--fg-2);white-space:nowrap;">
+                        {{ $exc }}
+                        <button type="button" wire:click="removeExclusion({{ $index }})" title="Stop excluding {{ $exc }}" style="color:var(--fg-3);display:flex;padding:2px;border-radius:3px;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                    </span>
+                @empty
+                    <span style="font-size:11.5px;color:var(--fg-3);">Nothing excluded. Every folder is scanned.</span>
+                @endforelse
+            </div>
+
+            @if ($webMode)
+                <div x-show="largestFolders.length" x-cloak style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line-2);padding-top:10px;">
+                    <span style="font-size:11px;color:var(--fg-3);text-transform:uppercase;letter-spacing:0.06em;">Largest folders in this selection</span>
+                    <template x-for="folder in largestFolders" :key="folder.path">
+                        <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+                            <span class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg-1);" x-text="folder.path"></span>
+                            <span class="mono" style="font-size:11px;color:var(--fg-3);white-space:nowrap;" x-text="folder.label"></span>
+                            <button type="button" @click="$wire.addExclusion(folder.path)" style="padding:2px 8px;font-size:11px;border:1px solid var(--line-1);border-radius:5px;color:var(--fg-2);background:var(--bg-1);">Exclude</button>
+                        </div>
+                    </template>
+                </div>
+            @endif
+
+            @php $suggestions = array_values(array_diff(config('checkmycode.suggested_exclusions', []), $exclusions)); @endphp
+            @if ($suggestions)
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;border-top:1px solid var(--line-2);padding-top:10px;">
+                    <span style="font-size:11px;color:var(--fg-3);margin-right:2px;">Common:</span>
+                    @foreach ($suggestions as $suggestion)
+                        <button type="button" wire:click="addExclusion('{{ $suggestion }}')" class="mono" style="padding:2px 7px;font-size:11px;border:1px dashed var(--line-1);border-radius:5px;color:var(--fg-3);">+ {{ $suggestion }}</button>
+                    @endforeach
+                </div>
+            @endif
+        </div>
     </div>
 
     @if ($status === 'running' && ! $webMode)
