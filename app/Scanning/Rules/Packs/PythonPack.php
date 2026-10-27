@@ -1,0 +1,323 @@
+<?php
+
+namespace App\Scanning\Rules\Packs;
+
+use App\Scanning\ProjectDetector;
+
+/**
+ * Python, Django, Flask and FastAPI.
+ */
+class PythonPack extends RulePack
+{
+    /** Django settings modules meant only for local development or tests. */
+    protected const DEV_SETTINGS = '#settings/(dev|development|local|test|testing|ci)[^/]*\.py$|(dev|local|test)_settings\.py$#';
+
+    public function appliesTo(string $projectType): bool
+    {
+        return ProjectDetector::isPython($projectType);
+    }
+
+    public function extensions(): array
+    {
+        return ['py'];
+    }
+
+    public function rules(): array
+    {
+        return [
+            [
+                'pattern' => '/\beval\s*\(/',
+                'rule_id' => 'checkmycode.python.eval-usage',
+                'title' => 'eval() usage detected',
+                'severity' => 'critical',
+                'category' => 'code-execution',
+                'why' => 'eval() on untrusted input can execute arbitrary Python code and lead to full system compromise.',
+                'fix' => 'Replace eval() with a safe parser, AST evaluation, or a typed input handler.',
+            ],
+            [
+                'pattern' => '/\b(subprocess\.(call|run|Popen|check_output)|os\.system)\s*\(/',
+                'unless' => '/\bshell\s*=\s*True\b/',
+                'rule_id' => 'checkmycode.python.subprocess-usage',
+                'title' => 'Subprocess or os.system call detected',
+                'severity' => 'high',
+                'category' => 'code-execution',
+                'why' => 'Shell commands assembled from user input are vulnerable to command injection.',
+                'fix' => 'Pass arguments as a list (never shell=True with user input) and validate every argument.',
+            ],
+            [
+                'pattern' => '/\bpickle\.loads?\s*\(/',
+                'rule_id' => 'checkmycode.python.pickle-deserialization',
+                'title' => 'Python pickle deserialization detected',
+                'severity' => 'critical',
+                'category' => 'deserialization',
+                'why' => 'Deserializing untrusted pickle data can execute arbitrary code during reconstruction.',
+                'fix' => 'Use JSON, MessagePack, or another safe serialization format for untrusted data.',
+            ],
+            [
+                'pattern' => '/\b__import__\s*\(/',
+                'rule_id' => 'checkmycode.python.dynamic-import',
+                'title' => 'Dynamic __import__() usage detected',
+                'severity' => 'high',
+                'category' => 'code-execution',
+                'why' => 'Dynamic imports from user-controlled strings can load malicious modules.',
+                'fix' => 'Use importlib.import_module() with an allowlist of permitted module names.',
+            ],
+            [
+                'pattern' => '/hashlib\.(md5|sha1)\s*\(/',
+                'rule_id' => 'checkmycode.python.weak-hash',
+                'title' => 'Weak hashing algorithm detected',
+                'severity' => 'medium',
+                'category' => 'cryptography',
+                'why' => 'MD5 and SHA-1 are computationally cheap, enabling fast brute-force attacks against hashed secrets.',
+                'fix' => 'Use hashlib.sha256() or stronger. For passwords, use bcrypt, argon2, or scrypt.',
+            ],
+            [
+                'pattern' => '/\bverify\s*=\s*False\b/',
+                'rule_id' => 'checkmycode.python.ssl-verification-disabled',
+                'title' => 'TLS certificate verification disabled in HTTP request',
+                'severity' => 'high',
+                'category' => 'transport-security',
+                'why' => 'Disabling SSL verification allows man-in-the-middle interception of HTTPS traffic.',
+                'fix' => 'Remove verify=False and fix the underlying certificate trust issue.',
+            ],
+            [
+                'pattern' => '/\bshell\s*=\s*True\b/',
+                'rule_id' => 'checkmycode.python.shell-true',
+                'title' => 'Subprocess call runs through the shell (shell=True)',
+                'severity' => 'critical',
+                'category' => 'command-injection',
+                'why' => 'With shell=True the command string is parsed by /bin/sh, so any interpolated value can inject extra commands.',
+                'fix' => 'Pass the command as a list, e.g. subprocess.run(["convert", path]), and drop shell=True.',
+            ],
+            [
+                'pattern' => '/\.(execute|executemany|raw|extra)\s*\(\s*(f["\']|["\'][^"\']*["\']\s*(%|\.format\s*\(|\+))/',
+                'rule_id' => 'checkmycode.python.sql-string-format',
+                'title' => 'SQL query built with string formatting',
+                'severity' => 'critical',
+                'category' => 'injection',
+                'why' => 'f-strings, % and .format() splice values straight into the SQL text, bypassing the driver\'s parameter binding.',
+                'fix' => 'Use placeholders and pass values separately: cursor.execute("SELECT ... WHERE id = %s", [user_id]).',
+            ],
+            [
+                'pattern' => '/\byaml\.load\s*\(/',
+                'unless' => '/Loader\s*=\s*(yaml\.)?(Safe|CSafe)Loader/',
+                'rule_id' => 'checkmycode.python.yaml-unsafe-load',
+                'title' => 'yaml.load() without SafeLoader',
+                'severity' => 'high',
+                'category' => 'deserialization',
+                'why' => 'The default and full YAML loaders can construct arbitrary Python objects, which turns untrusted YAML into code execution.',
+                'fix' => 'Use yaml.safe_load(data) or yaml.load(data, Loader=yaml.SafeLoader).',
+            ],
+            [
+                'pattern' => '/\bjwt\.decode\s*\(.*(verify\s*=\s*False|["\']verify_signature["\']\s*:\s*False|algorithms\s*=\s*\[\s*["\']none["\'])/i',
+                'rule_id' => 'checkmycode.python.jwt-signature-not-verified',
+                'title' => 'JWT decoded without verifying the signature',
+                'severity' => 'critical',
+                'category' => 'authentication',
+                'why' => 'Without signature verification anyone can forge a token with any user id or role.',
+                'fix' => 'Always verify: jwt.decode(token, key, algorithms=["HS256"]) with an explicit algorithm allowlist.',
+            ],
+            [
+                'pattern' => '/\bredirect\s*\(\s*request\.(args|GET|POST|form|values|query_params)\b/',
+                'rule_id' => 'checkmycode.python.open-redirect',
+                'title' => 'Redirect target taken straight from the request',
+                'severity' => 'high',
+                'category' => 'redirect',
+                'why' => 'Redirecting to a user-supplied URL lets attackers bounce victims from your domain to a phishing page.',
+                'fix' => 'Only redirect to internal paths, e.g. validate with django.utils.http.url_has_allowed_host_and_scheme() or url_for().',
+            ],
+            [
+                'pattern' => '/\.save\s*\(.*\.filename\b/',
+                'unless' => '/secure_filename/',
+                'rule_id' => 'checkmycode.python.upload-unsafe-filename',
+                'title' => 'Uploaded file saved under the client-supplied filename',
+                'severity' => 'high',
+                'category' => 'path-traversal',
+                'why' => 'A filename like ../../app/config.py lets an attacker write files outside the upload folder.',
+                'fix' => 'Pass the name through werkzeug.utils.secure_filename() or generate your own, and validate the extension and MIME type.',
+            ],
+            [
+                'pattern' => '/\b(send_file|send_from_directory|FileResponse|open)\s*\(\s*(request\.|f["\'][^"\']*\{request\.)/',
+                'rule_id' => 'checkmycode.python.path-traversal',
+                'title' => 'File path built from request input',
+                'severity' => 'high',
+                'category' => 'path-traversal',
+                'why' => 'Request-controlled paths can use ../ to read files such as .env or /etc/passwd.',
+                'fix' => 'Map user input to an allowlist of files, or resolve the path and check it stays inside the intended directory.',
+            ],
+            [
+                'pattern' => '/\b\w*(token|secret|password|passwd|otp|nonce|salt|api_?key|code)\w*\s*=.*\brandom\.(random|randint|choice|choices|getrandbits)\s*\(/i',
+                'rule_id' => 'checkmycode.python.insecure-random',
+                'title' => 'Security token generated with the random module',
+                'severity' => 'medium',
+                'category' => 'cryptography',
+                'why' => 'The random module is predictable; its output can be reconstructed and used to guess tokens.',
+                'fix' => 'Use the secrets module: secrets.token_urlsafe(32) or secrets.randbelow(n).',
+            ],
+            [
+                'pattern' => '/\btempfile\.mktemp\s*\(/',
+                'rule_id' => 'checkmycode.python.insecure-tempfile',
+                'title' => 'tempfile.mktemp() is race-prone',
+                'severity' => 'low',
+                'category' => 'filesystem',
+                'why' => 'mktemp() returns a name without creating the file, so another process can create or symlink it first.',
+                'fix' => 'Use tempfile.mkstemp() or tempfile.NamedTemporaryFile().',
+            ],
+            [
+                'pattern' => '/^\s*(async\s+)?def\s+(login|signin|sign_in|authenticate|token|register|signup|password_reset|reset_password|forgot_password)\w*\s*\(/i',
+                'unless_nearby' => '/ratelimit|rate_limit|limiter|throttl|Limiter|slowapi|axes/i',
+                'unless_file' => '/^\s*(import|from)\s+(django_ratelimit|ratelimit|flask_limiter|slowapi|axes)\b|throttle_classes/m',
+                'paths' => '#(views?|routes?|routers?|api|endpoints?|auth)[^/]*\.py$|(^|/)(views|routes|routers|api|endpoints|auth)/#i',
+                'rule_id' => 'checkmycode.python.auth-missing-rate-limit',
+                'title' => 'Authentication endpoint without rate limiting',
+                'severity' => 'medium',
+                'category' => 'brute-force',
+                'why' => 'Login, signup and password-reset endpoints without a rate limit can be brute-forced or used for credential stuffing.',
+                'fix' => 'Add a limiter: django-ratelimit (@ratelimit(key="ip", rate="5/m")), DRF throttle_classes, Flask-Limiter or slowapi.',
+            ],
+
+            // Django
+            [
+                'pattern' => '/^\s*DEBUG\s*=\s*True\b/',
+                'frameworks' => ['django'],
+                'paths' => '#settings#',
+                'skip' => self::DEV_SETTINGS,
+                'rule_id' => 'checkmycode.django.debug-enabled',
+                'title' => 'Django DEBUG is set to True',
+                'severity' => 'critical',
+                'category' => 'configuration',
+                'why' => 'DEBUG=True exposes stack traces, query details, and environment data to any visitor.',
+                'fix' => 'Set DEBUG = False in production or load from os.environ[\'DJANGO_DEBUG\'].',
+            ],
+            [
+                'pattern' => '/^\s*ALLOWED_HOSTS\s*=\s*\[[\s\'\"]*\*/',
+                'frameworks' => ['django'],
+                'paths' => '#settings#',
+                'skip' => self::DEV_SETTINGS,
+                'rule_id' => 'checkmycode.django.allowed-hosts-wildcard',
+                'title' => 'Django ALLOWED_HOSTS is set to wildcard',
+                'severity' => 'high',
+                'category' => 'configuration',
+                'why' => 'Wildcard ALLOWED_HOSTS disables Django\'s Host header validation, enabling header injection attacks.',
+                'fix' => 'Set ALLOWED_HOSTS to a specific list of trusted hostnames.',
+            ],
+            [
+                'pattern' => "/SECRET_KEY\s*=\s*['\"][^'\"]{10,}['\"]/",
+                'unless' => '/os\.environ|env\(|getenv/',
+                'frameworks' => ['django'],
+                'paths' => '#settings#',
+                'skip' => self::DEV_SETTINGS,
+                'rule_id' => 'checkmycode.django.hardcoded-secret-key',
+                'title' => 'Django SECRET_KEY appears to be hardcoded',
+                'severity' => 'critical',
+                'category' => 'secret',
+                'why' => 'A hardcoded SECRET_KEY in source control exposes session signing keys to anyone with repository access.',
+                'fix' => 'Load SECRET_KEY from an environment variable: SECRET_KEY = os.environ[\'DJANGO_SECRET_KEY\'].',
+            ],
+            [
+                'pattern' => '/^\s*(SESSION_COOKIE_SECURE|CSRF_COOKIE_SECURE|SESSION_COOKIE_HTTPONLY|SECURE_SSL_REDIRECT)\s*=\s*False\b/',
+                'frameworks' => ['django'],
+                'paths' => '#settings#',
+                'skip' => self::DEV_SETTINGS,
+                'rule_id' => 'checkmycode.django.insecure-cookie-setting',
+                'title' => 'Django cookie or HTTPS protection turned off',
+                'severity' => 'medium',
+                'category' => 'session',
+                'why' => 'Session and CSRF cookies without Secure/HttpOnly can be stolen over plain HTTP or read by injected scripts.',
+                'fix' => 'In production settings set SESSION_COOKIE_SECURE, CSRF_COOKIE_SECURE, SESSION_COOKIE_HTTPONLY and SECURE_SSL_REDIRECT to True.',
+            ],
+            [
+                'pattern' => '/^\s*(CORS_ALLOW_ALL_ORIGINS|CORS_ORIGIN_ALLOW_ALL)\s*=\s*True\b/',
+                'frameworks' => ['django'],
+                'rule_id' => 'checkmycode.django.cors-allow-all',
+                'title' => 'CORS allows every origin',
+                'severity' => 'medium',
+                'category' => 'cors',
+                'why' => 'Any website can call your API from a visitor\'s browser and read the responses.',
+                'fix' => 'Replace with CORS_ALLOWED_ORIGINS = ["https://your-frontend.example"].',
+            ],
+            [
+                'pattern' => '/@csrf_exempt\b/',
+                'frameworks' => ['django'],
+                'rule_id' => 'checkmycode.django.csrf-exempt',
+                'title' => 'View exempted from CSRF protection',
+                'severity' => 'medium',
+                'category' => 'csrf',
+                'why' => 'A csrf_exempt view that changes state can be triggered by any site the victim visits while logged in.',
+                'fix' => 'Remove @csrf_exempt, or verify a signature (e.g. a webhook HMAC) inside the view before acting.',
+            ],
+            [
+                'pattern' => '/\bmark_safe\s*\(|\bSafeString\s*\(/',
+                'frameworks' => ['django'],
+                'rule_id' => 'checkmycode.django.mark-safe',
+                'title' => 'mark_safe() disables HTML escaping',
+                'severity' => 'high',
+                'category' => 'xss',
+                'why' => 'Anything passed to mark_safe() is rendered as raw HTML, so user content inside it becomes stored or reflected XSS.',
+                'fix' => 'Build HTML with format_html(), which escapes its arguments, or sanitize with bleach/nh3 first.',
+            ],
+            [
+                'pattern' => '/\|\s*safe\b|\{%\s*autoescape\s+off\s*%\}/',
+                'extensions' => ['html', 'jinja', 'jinja2', 'j2', 'txt'],
+                'rule_id' => 'checkmycode.python.template-autoescape-off',
+                'title' => 'Template output marked safe (escaping disabled)',
+                'severity' => 'high',
+                'category' => 'xss',
+                'why' => 'The |safe filter and autoescape off print values as raw HTML; user-controlled values become XSS.',
+                'fix' => 'Remove |safe, or sanitize the value server-side (bleach/nh3) before marking it safe.',
+            ],
+            [
+                'pattern' => '/^\s*fields\s*=\s*["\']__all__["\']/',
+                'frameworks' => ['django'],
+                'rule_id' => 'checkmycode.django.modelform-all-fields',
+                'title' => 'Form or serializer exposes every model field',
+                'severity' => 'medium',
+                'category' => 'mass-assignment',
+                'why' => 'fields = "__all__" makes every column writable, including ones like is_staff or owner added later.',
+                'fix' => 'List the editable fields explicitly: fields = ["title", "body"].',
+            ],
+
+            // Flask
+            [
+                'pattern' => '/\.run\s*\(.*\bdebug\s*=\s*True\b/',
+                'frameworks' => ['flask', 'python', 'fastapi'],
+                'rule_id' => 'checkmycode.flask.debug-enabled',
+                'title' => 'App started with debug=True',
+                'severity' => 'critical',
+                'category' => 'configuration',
+                'why' => 'Flask\'s debug mode exposes the Werkzeug console, which allows arbitrary code execution from the browser.',
+                'fix' => 'Remove debug=True and control it with an environment variable that is off in production.',
+            ],
+            [
+                'pattern' => '/(\.secret_key|\[\s*["\']SECRET_KEY["\']\s*\])\s*=\s*["\'][^"\']{4,}["\']/',
+                'frameworks' => ['flask', 'python'],
+                'rule_id' => 'checkmycode.flask.hardcoded-secret-key',
+                'title' => 'Flask SECRET_KEY hardcoded in source',
+                'severity' => 'critical',
+                'category' => 'secret',
+                'why' => 'Anyone with the secret key can forge session cookies and log in as any user.',
+                'fix' => 'Load it from the environment: app.secret_key = os.environ["SECRET_KEY"], and rotate the leaked value.',
+            ],
+            [
+                'pattern' => '/\brender_template_string\s*\(/',
+                'frameworks' => ['flask', 'python'],
+                'rule_id' => 'checkmycode.flask.render-template-string',
+                'title' => 'render_template_string() used',
+                'severity' => 'high',
+                'category' => 'injection',
+                'why' => 'Rendering a template built from user input is server-side template injection, which leads to code execution.',
+                'fix' => 'Use render_template() with a file and pass user values as variables.',
+            ],
+            [
+                'pattern' => '/\bCORS\s*\(\s*app\s*\)|allow_origins\s*=\s*\[\s*["\']\*["\']|origins\s*=\s*["\']\*["\']/',
+                'frameworks' => ['flask', 'fastapi', 'python'],
+                'rule_id' => 'checkmycode.python.cors-wildcard',
+                'title' => 'CORS allows every origin',
+                'severity' => 'medium',
+                'category' => 'cors',
+                'why' => 'Any website can call your API from a visitor\'s browser and read the responses.',
+                'fix' => 'Pass an explicit allowlist, e.g. CORS(app, origins=["https://app.example"]) or allow_origins=["https://app.example"].',
+            ],
+        ];
+    }
+}

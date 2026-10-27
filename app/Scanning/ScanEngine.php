@@ -770,13 +770,14 @@ class ScanEngine
 
     protected function runEnvAudit(array $results, string $projectType): array
     {
-        // The audit checks Laravel settings (APP_KEY, APP_DEBUG, SESSION_DRIVER, ...).
-        if ($projectType !== 'laravel' || ! file_exists($this->projectPath.'/.env')) {
+        // Laravel gets its framework checks (APP_KEY, SESSION_DRIVER, ...); every
+        // stack gets the shared ones (debug/dev modes, weak secrets, public-prefixed secrets, ...).
+        if (! file_exists($this->projectPath.'/.env')) {
             return $results;
         }
 
         $this->log('.env audit: checking environment configuration...', 'env_audit');
-        $env = EnvAuditor::audit($this->projectPath);
+        $env = EnvAuditor::audit($this->projectPath, $projectType);
         $results['env_audit'] = $env;
         $results['summary']['env_audit'] = $env['summary'];
         $results['summary']['env_audit_total'] = $env['summary']['total'];

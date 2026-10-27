@@ -32,26 +32,6 @@ class ProjectDetector
 
             return 'php';
         }
-        if (file_exists($path.'/package.json')) {
-            foreach ([
-                'nextjs' => ['next'],
-                'nuxt' => ['nuxt'],
-                'angular' => ['@angular/core', 'angular'],
-                'svelte' => ['svelte'],
-                'vue' => ['vue'],
-                'react' => ['react'],
-                'nestjs' => ['@nestjs/core'],
-                'express' => ['express'],
-            ] as $type => $packages) {
-                foreach ($packages as $package) {
-                    if (static::packageJsonHasPackage($path, $package)) {
-                        return $type;
-                    }
-                }
-            }
-
-            return 'node';
-        }
         foreach (['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile'] as $signature) {
             if (! file_exists($path.'/'.$signature)) {
                 continue;
@@ -85,6 +65,29 @@ class ProjectDetector
         }
         if (static::hasFileMatching($path, ['*.csproj', '*.sln'])) {
             return 'dotnet';
+        }
+
+        // Checked last: Rails, Django, .NET and other backends often carry a
+        // package.json just for their frontend assets.
+        if (file_exists($path.'/package.json')) {
+            foreach ([
+                'nextjs' => ['next'],
+                'nuxt' => ['nuxt'],
+                'angular' => ['@angular/core', 'angular'],
+                'svelte' => ['svelte'],
+                'vue' => ['vue'],
+                'react' => ['react'],
+                'nestjs' => ['@nestjs/core'],
+                'express' => ['express'],
+            ] as $type => $packages) {
+                foreach ($packages as $package) {
+                    if (static::packageJsonHasPackage($path, $package)) {
+                        return $type;
+                    }
+                }
+            }
+
+            return 'node';
         }
 
         return 'unknown';

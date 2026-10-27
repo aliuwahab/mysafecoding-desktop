@@ -4,7 +4,10 @@ namespace App\Services;
 
 class EnvAuditor
 {
-    public static function audit(string $projectPath): array
+    /** Values that are template placeholders or well-known defaults, never real secrets. */
+    protected const PLACEHOLDER_SECRETS = ['changeme', 'change-me', 'change_me', 'secret', 'password', 'your-secret', 'your_secret', 'yoursecret', 'mysecret', 'supersecret', 'keyboard cat', 'test', 'dev', 'development', 'xxx', 'todo'];
+
+    public static function audit(string $projectPath, string $projectType = 'laravel'): array
     {
         $envPath = rtrim($projectPath, '/').'/.env';
         if (! file_exists($envPath)) {
@@ -20,11 +23,37 @@ class EnvAuditor
                 continue;
             }
             if (str_contains($line, '=')) {
-                [$key, $value] = explode('=', $line, 2);
+                [$key, $value] = explode('=', preg_replace('/^export\s+/', '', $line), 2);
                 $env[trim($key)] = ['value' => trim($value, " \t\n\r\0\x0B\"'"), 'line' => $num + 1];
             }
         }
 
+        $findings = $projectType === 'laravel' ? static::laravelFindings($env) : [];
+
+        // Stack-neutral checks fill in anything the framework checks did not report.
+        $reported = array_column($findings, 'key');
+        foreach (static::stackFindings($env) as $finding) {
+            if (! in_array($finding['key'], $reported, true)) {
+                $findings[] = $finding;
+            }
+        }
+
+        $summary = ['total' => count($findings), 'CRITICAL' => 0, 'HIGH' => 0, 'MEDIUM' => 0, 'INFO' => 0];
+        foreach ($findings as $f) {
+            $summary[$f['severity']] = ($summary[$f['severity']] ?? 0) + 1;
+        }
+
+        return ['findings' => $findings, 'summary' => $summary];
+    }
+
+    /**
+     * Laravel settings: APP_KEY, APP_DEBUG, SESSION_DRIVER, ...
+     *
+     * @param  array<string, array{value: string, line: int}>  $env
+     * @return list<array<string, mixed>>
+     */
+    protected static function laravelFindings(array $env): array
+    {
         $findings = [];
 
         // APP_DEBUG check
@@ -186,11 +215,86 @@ class EnvAuditor
             ];
         }
 
-        $summary = ['total' => count($findings), 'CRITICAL' => 0, 'HIGH' => 0, 'MEDIUM' => 0, 'INFO' => 0];
-        foreach ($findings as $f) {
-            $summary[$f['severity']] = ($summary[$f['severity']] ?? 0) + 1;
+        return $findings;
+    }
+
+    /**
+     * Checks for every stack: debug and development modes (Node, Django,
+     * Flask, Rails, Gin, ASP.NET Core, Spring, Phoenix, Symfony), weak
+     * secrets, weak database passwords, secrets in browser-exposed variables,
+     * disabled TLS verification, wildcard hosts/CORS and plain-HTTP URLs.
+     *
+     * @param  array<string, array{value: string, line: int}>  $env
+     * @return list<array<string, mixed>>
+     */
+    protected static function stackFindings(array $env): array
+    {
+        $findings = [];
+        $add = static function (string $key, string $severity, string $title, string $description, string $current, string $recommended) use (&$findings, $env): void {
+            $findings[] = compact('key', 'severity', 'title', 'description', 'current', 'recommended') + ['line' => $env[$key]['line']];
+        };
+
+        foreach ($env as $key => ['value' => $value]) {
+            $lower = strtolower($value);
+
+            if (in_array($key, ['DEBUG', 'APP_DEBUG', 'DJANGO_DEBUG', 'FLASK_DEBUG'], true) && in_array($lower, ['true', '1', 'yes', 'on'], true)) {
+                $add($key, 'CRITICAL', 'Debug mode is enabled', 'Debug mode shows stack traces, settings and sometimes an interactive console to anyone who triggers an error.', $value, 'false');
+            }
+
+            $developmentModes = [
+                'NODE_ENV' => ['development', 'dev'], 'FLASK_ENV' => ['development'], 'RAILS_ENV' => ['development'], 'RACK_ENV' => ['development'],
+                'GIN_MODE' => ['debug'], 'ASPNETCORE_ENVIRONMENT' => ['development'], 'DOTNET_ENVIRONMENT' => ['development'],
+                'MIX_ENV' => ['dev'], 'APP_ENV' => ['dev', 'local', 'development'],
+            ];
+            if (in_array($lower, $developmentModes[$key] ?? [], true)) {
+                $add($key, 'MEDIUM', 'Environment set to development', "{$key}={$value} turns on development behaviour such as verbose errors and unminified, unoptimised code. Use the production value for deployed apps.", $value, $key === 'GIN_MODE' ? 'release' : 'production');
+            }
+            if ($key === 'SPRING_PROFILES_ACTIVE' && preg_match('/\b(dev|local)\b/', $lower)) {
+                $add($key, 'MEDIUM', 'Development Spring profile active', 'Development profiles often enable H2 consoles, debug logging and relaxed security.', $value, 'prod');
+            }
+
+            if (preg_match('/^(NEXT_PUBLIC|VITE|REACT_APP|NUXT_PUBLIC|PUBLIC|EXPO_PUBLIC|GATSBY)_\w*(SECRET|PRIVATE|PASSWORD|SERVICE_ROLE)/', $key) && $value !== '') {
+                $add($key, 'HIGH', 'Secret in a browser-exposed variable', 'Variables with this prefix are bundled into the JavaScript every visitor downloads, so this secret is public.', '(hidden)', 'Drop the public prefix and use it only on the server');
+
+                continue;
+            }
+
+            if (preg_match('/(^|_)(SECRET|SECRET_KEY|SECRET_KEY_BASE|JWT_SECRET|SESSION_SECRET|APP_SECRET|COOKIE_SECRET|AUTH_SECRET|NEXTAUTH_SECRET|SIGNING_KEY|ENCRYPTION_KEY)$/', $key) && $key !== 'APP_KEY') {
+                if (strlen($value) < 32 || in_array($lower, self::PLACEHOLDER_SECRETS, true) || str_starts_with($lower, 'django-insecure-')) {
+                    $add($key, 'HIGH', 'Weak or placeholder secret', 'This secret signs sessions or tokens. A short or default value can be guessed, letting attackers forge logins.', $value === '' ? '(empty)' : '(hidden)', '32+ random bytes, e.g. openssl rand -hex 32');
+                }
+            }
+
+            if (preg_match('/^(DB|DATABASE|POSTGRES|POSTGRESQL|MYSQL|MARIADB|MONGO|MONGODB|REDIS)_PASS(WORD)?$/', $key)
+                && (strlen($value) < 8 || in_array($lower, ['password', 'secret', 'root', 'postgres', 'admin', 'mysql', 'changeme'], true))) {
+                $add($key, 'HIGH', 'Weak or empty database password', 'The database password is empty, too short, or a common default.', '(hidden)', 'Strong unique password (16+ chars)');
+            }
+            if (preg_match('/^(DATABASE_URL|DB_URL|MONGO_URL|MONGODB_URI|REDIS_URL)$/', $key)
+                && preg_match('#://[^:/@]+:(password|secret|root|postgres|admin|mysql|changeme)@#i', $value)) {
+                $add($key, 'HIGH', 'Default password in connection URL', 'The connection URL uses a well-known default password.', '(hidden)', 'Strong unique password (16+ chars)');
+            }
+
+            if (($key === 'NODE_TLS_REJECT_UNAUTHORIZED' && $value === '0') || (in_array($key, ['PYTHONHTTPSVERIFY', 'CURL_INSECURE'], true) && in_array($lower, ['0', 'false'], true))) {
+                $add($key, 'CRITICAL', 'TLS certificate verification disabled', 'Every outgoing HTTPS request accepts any certificate, so traffic can be intercepted.', $value, 'Remove it and trust the right CA instead');
+            }
+
+            if (in_array($key, ['ALLOWED_HOSTS', 'DJANGO_ALLOWED_HOSTS'], true) && preg_match('/(^|,)\s*\*\s*(,|$)/', $value)) {
+                $add($key, 'HIGH', 'Any Host header accepted', 'A wildcard ALLOWED_HOSTS disables Host header validation, enabling cache poisoning and password-reset link hijacking.', $value, 'Your real domain names');
+            }
+            if (preg_match('/^(CORS_ORIGINS?|CORS_ALLOWED_ORIGINS|ALLOWED_ORIGINS|CORS_ALLOW_ORIGIN)$/', $key) && trim($value) === '*') {
+                $add($key, 'MEDIUM', 'CORS allows every origin', 'Any website can call your API from a visitor\'s browser and read the responses.', $value, 'Your frontend origin(s)');
+            }
+
+            if (preg_match('/^(APP_URL|BASE_URL|SITE_URL|PUBLIC_URL|NEXTAUTH_URL|ORIGIN|FRONTEND_URL)$/', $key)
+                && str_starts_with($lower, 'http://') && ! preg_match('#^http://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:|/|$)#', $lower)) {
+                $add($key, 'MEDIUM', 'URL uses HTTP instead of HTTPS', 'Plain HTTP URLs lead to insecure redirects, cookies without the Secure flag and mixed content.', $value, str_replace('http://', 'https://', $value));
+            }
+
+            if (in_array($key, ['LOG_LEVEL', 'RUST_LOG', 'RAILS_LOG_LEVEL', 'LOGGING_LEVEL_ROOT'], true) && in_array($lower, ['debug', 'trace'], true)) {
+                $add($key, 'MEDIUM', 'Verbose logging enabled', 'Debug and trace logs often contain request bodies, tokens and personal data.', $value, 'info or warn');
+            }
         }
 
-        return ['findings' => $findings, 'summary' => $summary];
+        return $findings;
     }
 }

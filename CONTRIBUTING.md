@@ -46,7 +46,7 @@ Detection lives in `app/Scanning/ProjectDetector.php`. Map the new type to Semgr
 ## Adding Rules
 
 - **Semgrep rules** (preferred, AST-aware) go in `resources/scanners/<language>.yml` with ids prefixed `checkmycode.`. Validate them with `semgrep scan --validate`, and check them against both a vulnerable and a safe sample. Remember that `patterns:` means AND; use `pattern-either:` for alternatives.
-- **Pattern rules** (regex, any file type) go in `app/Scanning/Rules/PatternRuleScanner.php`. Add a test in `tests/Unit/PatternRuleScannerTest.php`.
+- **Pattern rules** (regex, any file type) go in the language's pack in `app/Scanning/Rules/Packs/`. The keys a rule can use (`frameworks`, `paths`, `unless`, `unless_nearby`, `when_file`, …) are documented in `RulePack.php`. Add a vulnerable and a safe sample to `tests/Unit/RulePackTest.php`.
 - **Laravel rules** are classes in `app/Services/Scanners/Rules/`, registered in `LaravelRuleEngine`.
 
 ## Web Mode Rules

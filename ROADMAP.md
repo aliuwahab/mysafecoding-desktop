@@ -16,6 +16,7 @@ CheckMyCode is a free, open-source security scanner for the stacks developers sh
 - [x] Semgrep static analysis (SAST)
 - [x] Gitleaks secrets detection
 - [x] Custom framework security rules for Laravel apps
+- [x] Framework rule packs for Symfony, Django, Flask, FastAPI, Express, NestJS, Next.js, React, Vue, Svelte, Angular, Rails, Go, Spring, .NET, Rust and Phoenix
 - [x] Multi-language project detection for PHP, JavaScript/TypeScript, Python, Ruby, Go, Rust, Elixir, Java, and .NET
 - [x] Popular framework detection for Laravel, Symfony, Next.js, Nuxt, React, Vue, Svelte, Angular, NestJS, Express, Django, Flask, FastAPI, Rails, Phoenix, and Spring
 - [x] Real-time log streaming
@@ -49,7 +50,7 @@ CheckMyCode is a free, open-source security scanner for the stacks developers sh
 - [x] **Scan Diff** — Compare two scans of the same project side-by-side to see what's new/fixed since last scan. Helps developers track remediation progress.
 
 #### Medium Effort, High Value
-- [x] **.env Audit Tab** — Dedicated tab that checks `.env` values (debug mode, app key strength, session driver, mail driver, database password, etc.) without needing external tools. Zero-config, runs automatically with every scan.
+- [x] **.env Audit Tab** — Dedicated tab that checks `.env` values for every stack (debug and development modes, secret strength, public-prefixed secrets, database password, Laravel drivers, etc.) without needing external tools. Zero-config, runs automatically with every scan.
 - [x] **Native Notifications** — macOS notifications when a scan completes, with finding count. Non-intrusive awareness for background scans.
 
 ---

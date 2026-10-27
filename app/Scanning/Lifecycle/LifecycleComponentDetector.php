@@ -23,6 +23,8 @@ class LifecycleComponentDetector
             ...$this->elixirComponents($repositoryPath),
             ...$this->rubyComponents($repositoryPath),
             ...$this->goComponents($repositoryPath),
+            ...$this->javaComponents($repositoryPath),
+            ...$this->dotnetComponents($repositoryPath),
         ])
             ->filter()
             ->unique(fn (array $component): string => $component['product'])
@@ -316,6 +318,96 @@ class LifecycleComponentDetector
     }
 
     /**
+     * Java runtime and Spring versions from Maven or Gradle build files.
+     *
+     * @return array<int, array<string, string>>
+     */
+    protected function javaComponents(string $repositoryPath): array
+    {
+        $source = $this->firstExistingPath($repositoryPath, ['pom.xml', 'build.gradle.kts', 'build.gradle']);
+
+        if ($source === null) {
+            return [];
+        }
+
+        $build = $this->fileContents($repositoryPath.'/'.$source);
+
+        $javaVersion = $this->firstFilledString(
+            $this->extractVersionFromText($build, '/<(?:java\.version|maven\.compiler\.release|maven\.compiler\.target|maven\.compiler\.source)>\s*([0-9.]+)\s*</'),
+            $this->extractVersionFromText($build, '/JavaLanguageVersion\.of\(\s*([0-9]+)\s*\)/'),
+            $this->extractVersionFromText($build, '/(?:sourceCompatibility|targetCompatibility|jvmTarget)\s*=\s*(?:JavaVersion\.VERSION_|["\']?)([0-9._]+)/'),
+            $this->firstLine($repositoryPath.'/.java-version'),
+        );
+
+        // Java 8 and older are written 1.8, 1.7, ...
+        if ($javaVersion !== null && preg_match('/^1[._]([0-9]+)/', $javaVersion, $legacy)) {
+            $javaVersion = $legacy[1];
+        }
+
+        $springBootVersion = $this->firstFilledString(
+            $this->extractVersionFromText($build, '/<artifactId>spring-boot-starter-parent<\/artifactId>\s*<version>([^<]+)<\/version>/'),
+            $this->extractVersionFromText($build, '/(?:id\s*\(?\s*["\']org\.springframework\.boot["\']\s*\)?\s*version|org\.springframework\.boot:spring-boot-gradle-plugin:)\s*["\']?([0-9][^"\'\s)]*)/'),
+        );
+
+        return array_values(array_filter([
+            $this->makeComponent(
+                product: 'eclipse-temurin',
+                label: 'Java',
+                kind: 'runtime',
+                version: $javaVersion,
+                source: $source,
+            ),
+            $this->makeComponent(
+                product: 'spring-boot',
+                label: 'Spring Boot',
+                kind: 'framework',
+                version: $springBootVersion,
+                source: $source,
+            ),
+        ]));
+    }
+
+    /**
+     * .NET target framework from the first project file (or global.json's SDK).
+     *
+     * @return array<int, array<string, string>>
+     */
+    protected function dotnetComponents(string $repositoryPath): array
+    {
+        $project = $this->firstProjectFile($repositoryPath);
+        $version = $this->extractVersionFromText($project !== null ? $this->fileContents($project) : null, '/<TargetFrameworks?>\s*(?:net|netcoreapp)([0-9]+\.[0-9]+)/');
+        $source = $project !== null ? ltrim(substr($project, strlen($repositoryPath)), '/') : 'global.json';
+
+        if ($version === null) {
+            $version = data_get($this->decodeJsonFile($repositoryPath.'/global.json'), 'sdk.version');
+            $source = 'global.json';
+        }
+
+        return array_values(array_filter([
+            $this->makeComponent(
+                product: 'dotnet',
+                label: '.NET',
+                kind: 'runtime',
+                version: is_string($version) ? $version : null,
+                source: $source,
+            ),
+        ]));
+    }
+
+    protected function firstProjectFile(string $repositoryPath): ?string
+    {
+        $candidates = [
+            ...glob($repositoryPath.'/*.csproj') ?: [],
+            ...glob($repositoryPath.'/*/*.csproj') ?: [],
+            ...glob($repositoryPath.'/*/*/*.csproj') ?: [],
+            ...glob($repositoryPath.'/*.fsproj') ?: [],
+            ...glob($repositoryPath.'/*/*.fsproj') ?: [],
+        ];
+
+        return $candidates[0] ?? null;
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     protected function decodeJsonFile(string $path): ?array
@@ -464,8 +556,13 @@ class LifecycleComponentDetector
             return null;
         }
 
+        // .NET cycles are "10", "8", "6", "5" but "3.1" and "2.1" before .NET 5.
+        if ($product === 'dotnet') {
+            return (int) $version >= 5 ? (string) (int) $version : implode('.', array_slice(explode('.', $version), 0, 2));
+        }
+
         $precision = match ($product) {
-            'laravel', 'nodejs', 'express', 'nextjs', 'nuxt', 'angular', 'erlang' => 1,
+            'laravel', 'nodejs', 'express', 'nextjs', 'nuxt', 'angular', 'erlang', 'eclipse-temurin' => 1,
             default => 2,
         };
 

@@ -25,7 +25,9 @@ class PatternRuleScannerTest extends TestCase
 
     private function write(string $relative, string $contents): void
     {
-        @mkdir(dirname($this->path.'/'.$relative), 0755, true);
+        if (! is_dir(dirname($this->path.'/'.$relative))) {
+            mkdir(dirname($this->path.'/'.$relative), 0755, true);
+        }
         file_put_contents($this->path.'/'.$relative, $contents);
     }
 

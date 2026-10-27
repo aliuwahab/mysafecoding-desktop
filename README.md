@@ -13,11 +13,11 @@ Open-source security scanner for the projects developers ship every day. Point i
 | **Dependencies** | Every lockfile against two public vulnerability databases (Trivy's NVD/GitHub Advisories DB and OSV.dev, checked offline), merged without duplicates: Composer, npm/yarn/pnpm, pip/Poetry/uv, Bundler, Go modules, Cargo, Maven/Gradle, NuGet, Mix and more | Trivy + OSV-Scanner |
 | **Code** | Language-aware SAST with the Semgrep registry packs for the detected stack and framework (Django, Flask, FastAPI, React, Node/Express, Kotlin, …) plus OWASP Top 10 rules, and CheckMyCode's own rules in `resources/scanners/` | Semgrep |
 | **Secrets** | API keys, tokens and passwords in files and (desktop/CLI) full git history | Gitleaks |
-| **Rules** | CheckMyCode pattern rules for PHP, Python/Django, JS/TS, Ruby, Go, plus the Laravel rule pack | built in |
+| **Rules** | CheckMyCode framework rule packs for every stack: PHP/Symfony, Python (Django, Flask, FastAPI), JS/TS (Express, NestJS, Next.js, React, Vue, Svelte, Angular), Ruby/Rails, Go, Java/Spring, .NET, Rust and Elixir/Phoenix, plus the Laravel rule pack. They cover injection, XSS, CSRF, mass assignment, open redirects, path traversal, weak crypto, insecure cookies/CORS/TLS, debug config and unthrottled login routes | built in |
 | **Config / IaC** | Dockerfile, Kubernetes, Terraform, CloudFormation and Helm misconfiguration | Trivy |
 | **Workflows** | GitHub Actions security: script injection, dangerous triggers (`pull_request_target`), excessive permissions, unpinned actions | zizmor |
 | **Lifecycle** | Runtimes and frameworks that are out of (or nearly out of) security support | endoflife.date |
-| **.env audit** | Debug mode, weak keys, insecure drivers | built in |
+| **.env audit** | Debug and development modes for every stack, weak or placeholder secrets, secrets in browser-exposed variables (`NEXT_PUBLIC_`, `VITE_`, …), weak database passwords, disabled TLS verification, plus Laravel's driver checks | built in |
 | **Licenses** | Copyleft and restricted licenses (reported, not graded) | Trivy |
 | **Quality** | Best-practice suggestions (reported, not graded) | Semgrep |
 
@@ -106,7 +106,8 @@ app/Scanning/
   ProjectDetector.php       Stack detection (Laravel, Next.js, Django, Spring, …)
   SemgrepRulesets.php       Registry packs + custom rules per stack
   ScanGrade.php             A–F security grade
-  Rules/PatternRuleScanner  Cross-language pattern rules
+  Rules/PatternRuleScanner  Runs the pattern rule packs (one walk over the project)
+  Rules/Packs/              One rule pack per language family (Python, JavaScript, Java, .NET, …)
   Lifecycle/                endoflife.date support checks
   Store/                    DatabaseScanStore (desktop) · EphemeralScanStore (web: cache + session)
   Web/ArchiveExtractor      Safe upload extraction (zip-slip, symlink, size and count limits)

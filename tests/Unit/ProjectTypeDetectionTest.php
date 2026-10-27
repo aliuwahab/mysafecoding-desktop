@@ -80,6 +80,22 @@ class ProjectTypeDetectionTest extends TestCase
         $this->assertSame('dotnet', $this->detect());
     }
 
+    public function test_backend_wins_over_a_frontend_package_json(): void
+    {
+        $this->createFile('Gemfile', "gem 'rails', '~> 8.0'\n");
+        $this->createJson('package.json', ['dependencies' => ['react' => '^19.0']]);
+
+        $this->assertSame('rails', $this->detect());
+    }
+
+    public function test_dotnet_wins_over_a_tooling_package_json(): void
+    {
+        $this->createFile('src/App/App.csproj', '<Project Sdk="Microsoft.NET.Sdk.Web"></Project>');
+        $this->createJson('package.json', ['devDependencies' => ['prettier' => '^3.0']]);
+
+        $this->assertSame('dotnet', $this->detect());
+    }
+
     private function detect(): string
     {
         return ProjectDetector::detect($this->fixturePath);
