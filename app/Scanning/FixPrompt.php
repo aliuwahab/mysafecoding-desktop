@@ -139,6 +139,7 @@ class FixPrompt
                             'severities' => [],
                             'fixTo' => null,
                             'unfixed' => 0,
+                            'introducedBy' => $vuln['IntroducedBy'] ?? null,
                         ];
                         $path = UpgradePath::classify($vuln['InstalledVersion'] ?? null, $vuln['FixedVersion'] ?? null);
                         $package['advisories'][] = ($vuln['VulnerabilityID'] ?? '?').' ('.$clip($vuln['Title'] ?? '', 90).')';
@@ -175,11 +176,16 @@ class FixPrompt
                             default => 'none',
                         },
                         'text' => sprintf(
-                            '- `%s` %s in `%s`%s: %d %s (%s): %s. %s',
+                            '- `%s` %s in `%s`%s%s: %d %s (%s): %s. %s',
                             $package['name'],
                             $package['installed'],
                             $package['lockfile'],
                             $package['dev'] ? ' (dev dependency)' : '',
+                            match (true) {
+                                $package['introducedBy'] === null => '',
+                                $package['introducedBy']['direct'] => ', direct dependency',
+                                default => ', transitive, pulled in by '.implode(', ', array_map(fn ($p) => "`{$p}`", array_slice($package['introducedBy']['via'], 0, 5))),
+                            },
                             $advisories,
                             $advisories === 1 ? 'advisory' : 'advisories',
                             $severityList,

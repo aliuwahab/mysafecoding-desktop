@@ -93,6 +93,20 @@ class ScannerScreensTest extends TestCase
             ->assertSee('sanitized by Filament');
     }
 
+    public function test_dependencies_show_which_direct_dependency_pulls_them_in(): void
+    {
+        $results = $this->results();
+        $results['trivy']['Results'][0]['Vulnerabilities'][0]['IntroducedBy'] = ['direct' => false, 'via' => ['laravel/framework v12.53.0', 'laravel/sail v1.53.0']];
+        $results['trivy']['Results'][0]['Vulnerabilities'][1]['IntroducedBy'] = ['direct' => true, 'via' => []];
+        Scan::create(['project_path' => '/tmp/example-app', 'status' => 'completed', 'results' => $results]);
+
+        Livewire::test(Scanner::class)
+            ->set('activeTab', 'trivy')
+            ->assertSee('via laravel/framework v12.53.0 +1')
+            ->assertSee('Pulled in by: laravel/framework v12.53.0, laravel/sail v1.53.0')
+            ->assertSee('Listed directly in your manifest');
+    }
+
     public function test_rule_findings_can_be_ignored(): void
     {
         $results = $this->results();

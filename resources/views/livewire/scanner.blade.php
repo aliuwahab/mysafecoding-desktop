@@ -705,7 +705,8 @@
                    onmouseenter="this.style.background='var(--bg-3)'" onmouseleave="this.style.background='transparent'">
                 <span style="display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;color:{{ $sc }};background:color-mix(in srgb,{{ $sc }} 14%,transparent);border:1px solid color-mix(in srgb,{{ $sc }} 24%,transparent);font-family:var(--font-mono);">{{ $vuln['Severity']??'?' }}</span>
                 <span class="mono" style="color:var(--fg-1);">{{ $vuln['VulnerabilityID']??'' }}</span>
-                <span style="display:flex;align-items:center;gap:6px;">
+                <span style="display:flex;flex-direction:column;gap:3px;min-width:0;">
+                <span style="display:flex;align-items:center;gap:6px;min-width:0;">
                   @php
                     $ecoMap = ['composer'=>'PHP','npm'=>'JS','yarn'=>'JS','pnpm'=>'JS','bun'=>'JS','node-pkg'=>'JS','pip'=>'PY','pipenv'=>'PY','poetry'=>'PY','uv'=>'PY','python-pkg'=>'PY','bundler'=>'RB','gemspec'=>'RB','gomod'=>'GO','gobinary'=>'GO','cargo'=>'RS','rustbinary'=>'RS','mix'=>'EX','hex'=>'EX','pom'=>'JAVA','gradle'=>'JAVA','jar'=>'JAVA','sbt'=>'JAVA','nuget'=>'.NET','dotnet-core'=>'.NET','packages-props'=>'.NET','pub'=>'DART','swift'=>'SWIFT','cocoapods'=>'SWIFT','conan'=>'C++'];
                     $eco = $ecoMap[strtolower($result['Type'] ?? '')] ?? strtoupper(substr($result['Type'] ?? 'PKG', 0, 5));
@@ -716,6 +717,14 @@
                   @if (!empty($vuln['DevDependency']))
                     <span title="Dev dependency: not graded" style="font-size:9px;font-weight:700;letter-spacing:0.06em;padding:1px 4px;border-radius:3px;background:var(--bg-3);color:var(--fg-3);font-family:var(--font-mono);">DEV</span>
                   @endif
+                </span>
+                @php $introducedBy = $vuln['IntroducedBy'] ?? null; @endphp
+                @if ($introducedBy)
+                  <span class="mono" style="font-size:10.5px;color:var(--fg-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                        title="{{ $introducedBy['direct'] ? 'Listed directly in your manifest' : 'Pulled in by: '.implode(', ', $introducedBy['via']) }}">
+                    {{ $introducedBy['direct'] ? 'direct' : 'via '.$introducedBy['via'][0].(count($introducedBy['via']) > 1 ? ' +'.(count($introducedBy['via']) - 1) : '') }}
+                  </span>
+                @endif
                 </span>
                 <span class="mono" style="color:var(--fg-3);">{{ $vuln['InstalledVersion']??'' }}</span>
                 @php

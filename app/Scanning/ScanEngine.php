@@ -43,6 +43,9 @@ class ScanEngine
 
     protected array $options = [];
 
+    /** @var array<string, array<string, array{name: string, version: string, direct: bool, dev: bool, dependsOn: list<string>}>> lockfile => package graph (not stored) */
+    protected array $dependencyGraphs = [];
+
     public function __construct(
         protected Filesystem $files = new Filesystem,
     ) {}
@@ -77,6 +80,7 @@ class ScanEngine
     public function run(string $projectPath, string $outputDir, array $exclusions = [], ?callable $log = null, array $options = []): array
     {
         $this->logger = $log ?? static function (): void {};
+        $this->dependencyGraphs = [];
         $this->exclusions = array_values(array_unique(array_filter(array_map(
             static fn (string $exclusion): string => trim($exclusion, " \t/"),
             $exclusions,
@@ -177,6 +181,8 @@ class ScanEngine
             $results = $this->runZizmor($results);
         }
 
+        $results = $this->annotateDependencyParents($results);
+
         if (! in_array('semgrep', $missing, true)) {
             $results = $this->runSemgrep($results, $projectType);
         }
@@ -242,6 +248,8 @@ class ScanEngine
             config('checkmycode.binaries.trivy'), 'fs',
             '--config', $trivyConfig,
             '--scanners', 'vuln,misconfig,license',
+            // The package graph (direct/indirect, dev, depends-on) powers "pulled in by" and DEV flags.
+            '--list-all-pkgs', '--include-dev-deps',
             '--format', 'json',
             '--output', $output,
             '--severity', 'CRITICAL,HIGH,MEDIUM,LOW',
@@ -267,8 +275,33 @@ class ScanEngine
         $licenses = [];
         $flagged = config('checkmycode.license_policy.flagged_licenses', []);
 
+        $devCount = 0;
+
         foreach ($trivy['Results'] ?? [] as $index => $target) {
-            foreach ($target['Vulnerabilities'] ?? [] as $vuln) {
+            $graph = [];
+            foreach ($target['Packages'] ?? [] as $package) {
+                if (! empty($package['ID'])) {
+                    $graph[$package['ID']] = [
+                        'name' => (string) ($package['Name'] ?? ''),
+                        'version' => (string) ($package['Version'] ?? ''),
+                        'direct' => ($package['Relationship'] ?? '') === 'direct',
+                        'dev' => (bool) ($package['Dev'] ?? false),
+                        'dependsOn' => $package['DependsOn'] ?? [],
+                    ];
+                }
+            }
+            if ($graph !== []) {
+                $this->dependencyGraphs[$target['Target'] ?? ''] = $graph;
+            }
+
+            foreach ($target['Vulnerabilities'] ?? [] as $vulnIndex => $vuln) {
+                // Build and test tooling: shown with a DEV badge, not graded.
+                if ($graph[$vuln['PkgID'] ?? '']['dev'] ?? false) {
+                    $trivy['Results'][$index]['Vulnerabilities'][$vulnIndex]['DevDependency'] = true;
+                    $devCount++;
+
+                    continue;
+                }
                 $severity = $vuln['Severity'] ?? 'LOW';
                 $vulnCounts[$severity] = ($vulnCounts[$severity] ?? 0) + 1;
             }
@@ -309,7 +342,7 @@ class ScanEngine
             }
 
             // Keep the stored raw output focused on vulnerabilities.
-            unset($trivy['Results'][$index]['Misconfigurations'], $trivy['Results'][$index]['MisconfSummary'], $trivy['Results'][$index]['Licenses']);
+            unset($trivy['Results'][$index]['Misconfigurations'], $trivy['Results'][$index]['MisconfSummary'], $trivy['Results'][$index]['Licenses'], $trivy['Results'][$index]['Packages']);
         }
 
         $trivy['Results'] = array_values(array_filter(
@@ -320,6 +353,7 @@ class ScanEngine
         $results['trivy'] = $trivy;
         $results['summary']['trivy'] = $vulnCounts;
         $results['summary']['trivy_total'] = array_sum($vulnCounts);
+        $results['summary']['dev_dependencies_total'] = $devCount;
 
         $results['trivy_config'] = ['findings' => $misconfigurations, 'summary' => ['total' => count($misconfigurations)] + $configCounts];
         $results['summary']['trivy_config'] = $configCounts;
@@ -388,12 +422,108 @@ class ScanEngine
         $results['summary']['dev_dependencies_total'] = $devCount;
         $results['meta']['osv_added'] = $merged['added'];
 
-        $prodAdded = $merged['added'] - $devCount;
+        // Only what OSV-Scanner itself added (Trivy flags its own dev findings too).
+        $osvDev = 0;
+        foreach ($results['trivy']['Results'] as $target) {
+            foreach ($target['Vulnerabilities'] ?? [] as $vuln) {
+                if (($vuln['DataSource']['ID'] ?? '') === 'osv' && ($vuln['DevDependency'] ?? false)) {
+                    $osvDev++;
+                }
+            }
+        }
         $this->log(sprintf(
             'OSV-Scanner: %d additional vulnerable dependencies not in Trivy\'s database%s.',
-            $prodAdded,
-            $devCount > 0 ? ", plus {$devCount} in dev dependencies (shown, not graded)" : '',
+            $merged['added'] - $osvDev,
+            $osvDev > 0 ? ", plus {$osvDev} in dev dependencies (shown, not graded)" : '',
         ), 'trivy');
+
+        return $results;
+    }
+
+    /**
+     * For each vulnerable package, find the direct dependencies (the ones in
+     * your manifest) that pull it in, e.g. "vitest via vite-plus 0.3.0", so the
+     * fix can target the right package.
+     */
+    protected function annotateDependencyParents(array $results): array
+    {
+        if ($this->dependencyGraphs === [] || empty($results['trivy']['Results'])) {
+            return $results;
+        }
+
+        foreach ($results['trivy']['Results'] as $t => $target) {
+            $graph = $this->dependencyGraphs[$target['Target'] ?? ''] ?? null;
+            if ($graph === null) {
+                continue;
+            }
+
+            $parents = [];
+            $byName = [];
+            foreach ($graph as $id => $package) {
+                $byName[$package['name'].'@'.ltrim($package['version'], 'v')] = $id;
+                foreach ($package['dependsOn'] as $child) {
+                    $parents[$child][] = $id;
+                }
+            }
+
+            foreach ($target['Vulnerabilities'] ?? [] as $v => $vuln) {
+                $id = $vuln['PkgID'] ?? $byName[($vuln['PkgName'] ?? '').'@'.ltrim((string) ($vuln['InstalledVersion'] ?? ''), 'v')] ?? null;
+                if ($id === null || ! isset($graph[$id])) {
+                    continue;
+                }
+
+                if ($graph[$id]['dev'] && empty($vuln['DevDependency'])) {
+                    $results['trivy']['Results'][$t]['Vulnerabilities'][$v]['DevDependency'] = true;
+                }
+
+                if ($graph[$id]['direct']) {
+                    $results['trivy']['Results'][$t]['Vulnerabilities'][$v]['IntroducedBy'] = ['direct' => true, 'via' => []];
+
+                    continue;
+                }
+
+                // Walk up the graph to the direct dependencies that lead here.
+                $via = [];
+                $queue = $parents[$id] ?? [];
+                $seen = [$id => true];
+                while ($queue !== [] && count($seen) < 5000) {
+                    $current = array_shift($queue);
+                    if (isset($seen[$current]) || ! isset($graph[$current])) {
+                        continue;
+                    }
+                    $seen[$current] = true;
+                    if ($graph[$current]['direct']) {
+                        $via[$current] = $graph[$current]['name'].' '.$graph[$current]['version'];
+
+                        continue;
+                    }
+                    array_push($queue, ...($parents[$current] ?? []));
+                }
+
+                if ($via !== []) {
+                    ksort($via);
+                    $results['trivy']['Results'][$t]['Vulnerabilities'][$v]['IntroducedBy'] = ['direct' => false, 'via' => array_values($via)];
+                }
+            }
+        }
+
+        // DEV flags may have changed: recount what is graded.
+        $counts = ['CRITICAL' => 0, 'HIGH' => 0, 'MEDIUM' => 0, 'LOW' => 0];
+        $devCount = 0;
+        foreach ($results['trivy']['Results'] as $target) {
+            foreach ($target['Vulnerabilities'] ?? [] as $vuln) {
+                if ($vuln['DevDependency'] ?? false) {
+                    $devCount++;
+
+                    continue;
+                }
+                $severity = $vuln['Severity'] ?? 'LOW';
+                $counts[$severity] = ($counts[$severity] ?? 0) + 1;
+            }
+        }
+        $results['summary']['trivy'] = $counts;
+        $results['summary']['trivy_total'] = array_sum($counts);
+        $results['summary']['dev_dependencies_total'] = $devCount;
 
         return $results;
     }

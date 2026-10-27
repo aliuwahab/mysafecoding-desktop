@@ -81,7 +81,8 @@ class FixPromptTest extends TestCase
             'Vulnerabilities' => [
                 ['VulnerabilityID' => 'CVE-1', 'PkgName' => 'lodash', 'InstalledVersion' => '4.17.15', 'FixedVersion' => '4.17.19', 'Severity' => 'HIGH', 'Title' => 'a'],
                 ['VulnerabilityID' => 'CVE-2', 'PkgName' => 'lodash', 'InstalledVersion' => '4.17.15', 'FixedVersion' => '4.18.0', 'Severity' => 'MEDIUM', 'Title' => 'b'],
-                ['VulnerabilityID' => 'CVE-3', 'PkgName' => 'vite-plus', 'InstalledVersion' => '0.3.0', 'FixedVersion' => '1.1.0', 'Severity' => 'HIGH', 'Title' => 'c', 'DevDependency' => true],
+                ['VulnerabilityID' => 'CVE-3', 'PkgName' => 'vite-plus', 'InstalledVersion' => '0.3.0', 'FixedVersion' => '1.1.0', 'Severity' => 'HIGH', 'Title' => 'c', 'DevDependency' => true, 'IntroducedBy' => ['direct' => true, 'via' => []]],
+                ['VulnerabilityID' => 'CVE-4', 'PkgName' => 'vitest', 'InstalledVersion' => '4.1.11', 'FixedVersion' => '4.1.12', 'Severity' => 'MEDIUM', 'Title' => 'd', 'DevDependency' => true, 'IntroducedBy' => ['direct' => false, 'via' => ['vite-plus 0.3.0']]],
             ],
         ]]]];
 
@@ -90,8 +91,10 @@ class FixPromptTest extends TestCase
         $this->assertSame(1, substr_count($prompt, '- `lodash`'));
         $this->assertStringContainsString('2 advisories (HIGH ×1, MEDIUM ×1)', $prompt);
         $this->assertStringContainsString('Upgrading to 4.18.0 (minor upgrade) fixes all of them.', $prompt);
-        $this->assertMatchesRegularExpression('/### Major upgrade required.*\n- `vite-plus` 0\.3\.0 in `package-lock\.json` \(dev dependency\)/', $prompt);
-        $this->assertStringContainsString('## Issues (3)', $prompt);
+        $this->assertMatchesRegularExpression('/### Major upgrade required.*\n- `vite-plus` 0\.3\.0 in `package-lock\.json` \(dev dependency\), direct/', $prompt);
+        $this->assertStringContainsString('## Issues (4)', $prompt);
+        $this->assertStringContainsString('`vite-plus` 0.3.0 in `package-lock.json` (dev dependency), direct dependency', $prompt);
+        $this->assertStringContainsString('`vitest` 4.1.11 in `package-lock.json` (dev dependency), transitive, pulled in by `vite-plus 0.3.0`', $prompt);
         $this->assertStringContainsString('assess the real exposure', $prompt);
     }
 
