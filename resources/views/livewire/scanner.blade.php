@@ -105,18 +105,13 @@
     @if ($webMode)
     {{-- Community scan counter: real completed scans by everyone on this site --}}
     @php $stats = $this->scanStats; @endphp
-    <div style="margin:0 12px 12px;padding:12px 14px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:10px;" title="Completed scans by everyone using this site. Only the count is stored, never the code.">
+    <div style="margin:0 12px 12px;padding:12px 14px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:10px;" title="Completed scans by everyone using this site today. Only the count is stored, never the code.">
         <div style="font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);margin-bottom:8px;">Scans by the community</div>
-        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <span class="pulse-dot" style="width:7px;height:7px;border-radius:50%;background:var(--sev-ok);display:block;flex-shrink:0;"></span>
             <div>
-                <div class="serif" style="font-size:28px;line-height:1;color:var(--fg-1);">{{ number_format($stats['total']) }}</div>
-                <div style="font-size:10.5px;color:var(--fg-3);margin-top:3px;">projects scanned in total</div>
-            </div>
-            <div style="text-align:right;">
-                <div class="mono" style="font-size:15px;font-weight:600;color:var(--sev-ok);display:flex;align-items:center;gap:5px;justify-content:flex-end;">
-                    <span class="pulse-dot" style="width:6px;height:6px;border-radius:50%;background:var(--sev-ok);display:block;"></span>{{ number_format($stats['today']) }}
-                </div>
-                <div style="font-size:10.5px;color:var(--fg-3);margin-top:3px;">today</div>
+                <div class="serif" style="font-size:28px;line-height:1;color:var(--fg-1);">{{ number_format($stats['today']) }}</div>
+                <div style="font-size:10.5px;color:var(--fg-3);margin-top:3px;">{{ Str::plural('project', $stats['today']) }} scanned today</div>
             </div>
         </div>
     </div>

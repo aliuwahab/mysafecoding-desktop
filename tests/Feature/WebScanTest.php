@@ -133,7 +133,8 @@ class WebScanTest extends TestCase
 
         $this->get('/')
             ->assertSee('Scans by the community')
-            ->assertSee('projects scanned in total');
+            ->assertSee('projects scanned today')
+            ->assertDontSee('in total');
     }
 
     public function test_a_session_cannot_load_someone_elses_scan(): void
