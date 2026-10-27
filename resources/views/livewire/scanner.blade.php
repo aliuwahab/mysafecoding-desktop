@@ -1,4 +1,4 @@
-<div style="width:100vw;height:100vh;background:var(--bg-0);color:var(--fg-1);display:flex;flex-direction:column;overflow:hidden;position:relative;"
+<div class="app-root" style="width:100vw;height:100vh;background:var(--bg-0);color:var(--fg-1);display:flex;flex-direction:column;overflow:hidden;position:relative;"
     @if ($webMode) x-data="webScanner(@js(['exclusions' => $exclusions] + $webLimits))" @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="dropped($event)" @endif>
 
 @if ($status === 'running')
@@ -6,10 +6,13 @@
 @endif
 
 {{-- ── Title Bar ──────────────────────────────────────────────────── --}}
-<div style="height:44px;flex-shrink:0;background:var(--bg-0);border-bottom:1px solid var(--line-1);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 14px;gap:12px;user-select:none;" class="drag" data-tauri-drag-region>
+<div style="height:44px;flex-shrink:0;background:var(--bg-0);border-bottom:1px solid var(--line-1);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 14px;gap:12px;user-select:none;" class="drag m-titlebar" data-tauri-drag-region>
 
     {{-- Left: traffic lights + sidebar toggle --}}
     <div style="display:flex;align-items:center;gap:14px;">
+        <button type="button" class="m-menu" aria-label="Menu" onclick="document.documentElement.classList.toggle('nav-open')" style="width:32px;height:32px;align-items:center;justify-content:center;border:1px solid var(--line-1);border-radius:7px;background:var(--bg-2);color:var(--fg-2);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
         @unless ($webMode)
         <div class="traffic" style="-webkit-app-region:no-drag;">
             <i class="c"></i><i class="m"></i><i class="x"></i>
@@ -18,7 +21,7 @@
     </div>
 
     {{-- Center: breadcrumb --}}
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;min-width:280px;max-width:480px;font-size:12px;">
+    <div class="m-crumb" style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;min-width:280px;max-width:480px;font-size:12px;">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);flex-shrink:0;"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
         <span class="mono" style="color:var(--fg-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
             {{ $projectPath ?: ($webMode ? 'Pick a folder or drop it here…' : '~/Code/…') }}
@@ -58,7 +61,8 @@
 <div style="flex:1;display:flex;min-height:0;">
 
 {{-- ── Sidebar ──────────────────────────────────────────────────────── --}}
-<aside style="width:248px;flex-shrink:0;background:var(--bg-0);border-right:1px solid var(--line-1);display:flex;flex-direction:column;height:100%;overflow:hidden;">
+<div class="m-backdrop" onclick="document.documentElement.classList.remove('nav-open')"></div>
+<aside class="m-sidebar" onclick="if (event.target.closest('button, a, [wire\\:click]')) document.documentElement.classList.remove('nav-open')" style="width:248px;flex-shrink:0;background:var(--bg-0);border-right:1px solid var(--line-1);display:flex;flex-direction:column;height:100%;overflow:hidden;">
 
     {{-- Brand --}}
     <div style="padding:16px 16px 10px;display:flex;align-items:center;gap:9px;">
@@ -86,9 +90,9 @@
                 ['sponsor', 'Sponsor', config('checkmycode.sponsor_url'), '#ff6b9a', '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>'],
             ];
         @endphp
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:6px;">
             @foreach ($osLinks as [$key, $label, $url, $color, $icon])
-                @php $linkStyle = 'height:30px;padding:0 8px;display:flex;align-items:center;gap:6px;color:var(--fg-2);border:1px dashed var(--line-1);border-radius:7px;font-size:11.5px;justify-content:center;text-decoration:none;'; @endphp
+                @php $linkStyle = 'height:30px;padding:0 6px;display:flex;align-items:center;gap:5px;white-space:nowrap;color:var(--fg-2);border:1px dashed var(--line-1);border-radius:7px;font-size:11.5px;justify-content:center;text-decoration:none;'; @endphp
                 @if ($webMode)
                     <a href="{{ $url }}" target="_blank" rel="noopener" style="{{ $linkStyle }}">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:{{ $color }};">{!! $icon !!}</svg>{{ $label }}
@@ -173,7 +177,7 @@
     </div>
 
     {{-- Footer --}}
-    <div style="padding:10px 14px;border-top:1px solid var(--line-1);display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:var(--fg-3);">
+    <div style="padding:10px 14px;border-top:1px solid var(--line-1);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;font-size:10.5px;color:var(--fg-3);white-space:nowrap;">
         @if ($webMode)
             <span style="display:flex;align-items:center;gap:8px;">
                 <button type="button" @click="showHowItWorks = true" style="color:var(--fg-2);font-size:10.5px;">How it works</button>
@@ -230,13 +234,13 @@
 
 @else
 {{-- ── Scan Config Bar ───────────────────────────────────────────── --}}
-<div style="padding:12px 20px;border-bottom:1px solid var(--line-1);background:var(--bg-1);display:flex;align-items:center;gap:12px;">
+<div class="m-configbar" style="padding:12px 20px;border-bottom:1px solid var(--line-1);background:var(--bg-1);display:flex;align-items:center;gap:12px;">
     @php $folderIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-hi);"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2H3"/><path d="m3 9 1.5 9a2 2 0 0 0 2 2H19a2 2 0 0 0 2-2l1-7H5"/></svg>'; @endphp
     @php $fileIcon = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-2);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>'; @endphp
     @if ($webMode)
         <input type="file" x-ref="folderInput" webkitdirectory directory multiple style="display:none;" @change="pickedFolder($event)">
         <input type="file" x-ref="fileInput" multiple style="display:none;" @change="pickedFiles($event)">
-        <button type="button" @click="pickFolder()" :disabled="busy" style="display:flex;align-items:center;gap:8px;padding:6px 11px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;">
+        <button type="button" class="m-pick" @click="pickFolder()" :disabled="busy" style="display:flex;min-width:0;align-items:center;gap:8px;padding:6px 11px;height:32px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:7px;font-size:12px;">
             {!! $folderIcon !!}
             <span class="mono" style="color:var(--fg-1);font-weight:500;">{{ $projectPath ?: 'Select Folder' }}</span>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-3);"><path d="m6 9 6 6 6-6"/></svg>
@@ -256,7 +260,7 @@
         </button>
     @endif
 
-    <div style="flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
+    <div class="m-exclusions" style="flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
         <span style="font-size:10.5px;color:var(--fg-3);text-transform:uppercase;letter-spacing:0.08em;margin-right:2px;white-space:nowrap;">Exclude</span>
         @foreach ($exclusions as $index => $exc)
             <span class="mono" style="display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 8px;font-size:11px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:5px;color:var(--fg-2);white-space:nowrap;">
@@ -290,7 +294,7 @@
 
 @if ($webMode)
 {{-- ── Privacy strip: what happens to the selected files ─────────────── --}}
-<div style="padding:7px 20px;border-bottom:1px solid var(--line-1);background:color-mix(in srgb,var(--sev-ok) 5%,var(--bg-1));display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--fg-2);">
+<div class="m-privacy" style="padding:7px 20px;border-bottom:1px solid var(--line-1);background:color-mix(in srgb,var(--sev-ok) 5%,var(--bg-1));display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--fg-2);">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-ok);flex-shrink:0;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
     <span x-show="!busy">
         <strong style="color:var(--fg-1);font-weight:600;">Private scan.</strong>
@@ -426,8 +430,8 @@
     <div class="scroll" id="log-container" style="flex:1;overflow-y:auto;padding:8px 0;">
         @forelse ($logs as $log)
             @php $s = $scannerStyles[$log['scanner']] ?? $scannerStyles['sys']; @endphp
-            <div class="log-in" style="display:grid;grid-template-columns:80px 84px 1fr;gap:14px;padding:2px 20px;font-family:var(--font-mono);font-size:11.5px;line-height:1.7;align-items:baseline;">
-                <span style="color:var(--fg-4);text-align:right;">{{ $log['time'] }}</span>
+            <div class="log-in m-logrow" style="display:grid;grid-template-columns:80px 84px 1fr;gap:14px;padding:2px 20px;font-family:var(--font-mono);font-size:11.5px;line-height:1.7;align-items:baseline;">
+                <span class="m-hide" style="color:var(--fg-4);text-align:right;">{{ $log['time'] }}</span>
                 <span style="display:inline-block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;border-radius:3px;background:{{ $s['bg'] }};color:{{ $s['fg'] }};text-align:center;">{{ $log['scanner'] }}</span>
                 <span style="color:{{ $log['level'] === 'error' ? 'var(--sev-critical)' : ($log['level'] === 'warn' ? 'var(--fg-1)' : 'var(--fg-2)') }};word-break:break-word;">
                     @if ($log['level'] === 'warn') <span style="color:var(--sev-medium);margin-right:6px;">⚠</span> @endif
@@ -438,7 +442,7 @@
         @empty
             <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--fg-4);font-size:12px;">
                 @if ($webMode)
-                    <div style="text-align:center;max-width:460px;line-height:1.6;">
+                    <div style="text-align:center;max-width:460px;line-height:1.6;padding:0 16px;">
                         <div style="font-size:13px;color:var(--fg-2);margin-bottom:6px;">Pick a project folder or file, or drag it onto this window, then press Scan.</div>
                         <div style="font-size:11.5px;">Excluded folders never leave your browser. The rest is scanned in a temporary workspace and deleted as soon as the scan finishes. No account, no database, no stored code.</div>
                     </div>
@@ -462,10 +466,10 @@
     $severityCounts = \App\Scanning\ScanGrade::severityCounts($summary);
 @endphp
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-  <div style="max-width:1180px;margin:0 auto;padding:28px 32px 40px;">
+  <div class="m-pad" style="max-width:1180px;margin:0 auto;padding:28px 32px 40px;">
 
     {{-- Headline row --}}
-    <div style="display:grid;grid-template-columns:200px 1fr 260px;gap:20px;align-items:stretch;margin-bottom:22px;">
+    <div class="m-stack" style="display:grid;grid-template-columns:200px 1fr 260px;gap:20px;align-items:stretch;margin-bottom:22px;">
 
       {{-- Grade card --}}
       <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:14px;padding:20px 20px 18px;position:relative;overflow:hidden;">
@@ -489,7 +493,7 @@
           </div>
         </div>
         @php $ignoredStats = $this->ignoredStats; @endphp
-        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line-2);display:flex;align-items:center;gap:20px;font-size:11.5px;color:var(--fg-3);">
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line-2);display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;font-size:11.5px;color:var(--fg-3);">
           @if ($scanRecord = $this->selectedScan)
             <span>Finished {{ $scanRecord->completedAt?->format('H:i') ?? '—' }}
             @if ($scanRecord->completedAt && $scanRecord->startedAt)
@@ -592,7 +596,7 @@
     </div>
 
     {{-- Severity distribution + diff panel --}}
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+    <div class="m-stack" style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
 
       {{-- Stacked bar chart --}}
       <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:12px;padding:18px 22px;">
@@ -621,7 +625,7 @@
         @endphp
         @foreach ($sevRows as [$rl, $rd])
           @php $rt = array_sum(array_column($rd,1)); $pct = ($rt/$maxSevRow)*100; @endphp
-          <div style="margin-bottom:12px;display:grid;grid-template-columns:170px 1fr 40px;align-items:center;gap:12px;">
+          <div class="m-sevrow" style="margin-bottom:12px;display:grid;grid-template-columns:170px 1fr 40px;align-items:center;gap:12px;">
             <span style="font-size:11.5px;color:var(--fg-2);">{{ $rl }}</span>
             <div style="height:14px;background:var(--bg-3);border-radius:3px;overflow:hidden;display:flex;width:{{ $pct }}%;min-width:4px;">
               @foreach ($rd as [$rk,$rn,$rc])
@@ -677,21 +681,21 @@
 {{-- TRIVY ---------------------------------------------------------------- --}}
 @elseif ($activeTab === 'trivy')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    <div style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
+    <div class="m-tabhead" style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Dependency vulnerabilities</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $trivyTotal }} results</span>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">Trivy + OSV-Scanner · public CVE databases for every lockfile</span>
         @include('livewire.partials.fix-prompt-button', ['tab' => 'trivy'])
     </div>
-    <div style="padding:4px 32px 32px;">
+    <div class="m-pad" style="padding:4px 32px 32px;">
       @if (($summary['dev_dependencies_total'] ?? 0) > 0)
         <div style="margin:12px 0;padding:12px 16px;background:color-mix(in srgb,var(--sev-low) 8%,transparent);border:1px solid color-mix(in srgb,var(--sev-low) 22%,transparent);border-radius:8px;font-size:12px;color:var(--fg-2);line-height:1.5;">
           {{ $summary['dev_dependencies_total'] }} {{ Str::plural('vulnerability', $summary['dev_dependencies_total']) }} marked <span class="mono" style="color:var(--fg-1);">DEV</span> are in development dependencies (build and test tools). They don't count toward your grade, but still fix them if the package ends up in your shipped bundle (common for front-end libraries) or your dev server is reachable from a network.
         </div>
       @endif
       @if (!empty($results['trivy']['Results']))
-        <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
+        <div class="m-table" style="--table-min:980px;border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
           <div style="display:grid;grid-template-columns:84px 160px 200px 110px 110px 1fr 100px;padding:10px 16px;border-bottom:1px solid var(--line-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);background:var(--bg-1);">
             <span>Severity</span><span>CVE</span><span>Package</span><span>Installed</span><span>Fixed</span><span>Title</span><span>Action</span>
           </div>
@@ -765,14 +769,14 @@
 {{-- SEMGREP ------------------------------------------------------------- --}}
 @elseif ($activeTab === 'semgrep')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    <div style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
+    <div class="m-tabhead" style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Static analysis findings</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $semgrepTotal }} results</span>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">Semgrep · language-aware rules</span>
         @include('livewire.partials.fix-prompt-button', ['tab' => 'semgrep'])
     </div>
-    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
+    <div class="m-pad" style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
         @forelse ($results['semgrep']['results'] ?? [] as $finding)
           @php
             $sfp = ($finding['check_id']??'').':'.($finding['path']??'').':'.($finding['start']['line']??'');
@@ -822,14 +826,14 @@
 {{-- GITLEAKS ------------------------------------------------------------- --}}
 @elseif ($activeTab === 'gitleaks')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    <div style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
+    <div class="m-tabhead" style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Leaked secrets</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $gitleaksTotal }} results</span>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">Gitleaks · {{ ($results['meta']['git_history'] ?? true) ? 'files + full git history' : 'current files' }}</span>
         @include('livewire.partials.fix-prompt-button', ['tab' => 'gitleaks'])
     </div>
-    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
+    <div class="m-pad" style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:12px;">
         @include('livewire.partials.gitignored-note')
         @forelse ($results['gitleaks'] ?? [] as $secret)
           @php
@@ -838,7 +842,7 @@
           @endphp
           <div style="background:var(--bg-2);border:1px solid color-mix(in srgb,var(--sev-critical) 28%,var(--line-1));border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;opacity:{{ $gig?'0.45':'1' }};">
             <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--sev-critical);"></div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:10px;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--sev-critical);"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9M16 8l3 3M14 10l3 3"/></svg>
               <span style="display:inline-flex;align-items:center;font-size:9.5px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;color:var(--sev-critical);background:color-mix(in srgb,var(--sev-critical) 14%,transparent);border:1px solid color-mix(in srgb,var(--sev-critical) 24%,transparent);font-family:var(--font-mono);">CRITICAL</span>
               <span style="font-size:13px;font-weight:600;color:var(--fg-1);">{{ $secret['Description']??'' }}</span>
@@ -850,7 +854,7 @@
                 <button wire:click="promptIgnore('gitleaks:{{ $gfp }}')" style="font-size:11px;padding:4px 10px;background:var(--bg-3);border:1px solid var(--line-1);border-radius:5px;color:var(--fg-2);">Ignore</button>
               @endif
             </div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;font-size:11px;">
+            <div class="m-grid2" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;font-size:11px;">
               @foreach ([['Rule',['mono',true,$secret['RuleID']??'']],['Match',['mono','critical',$secret['Match']??'']],['File',['mono',false,($secret['File']??'').':'.($secret['StartLine']??'')]],['Author',['text',false,!empty($secret['Commit']) ? ($secret['Author']??'').' · '.substr($secret['Commit'],0,8) : 'working tree']]] as [$kl,$kv])
                 <div>
                   <div style="font-size:10px;color:var(--fg-3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:3px;">{{ $kl }}</div>
@@ -878,7 +882,7 @@
 @endphp
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
     @include('livewire.partials.tab-header', ['title' => 'Rule findings', 'count' => $rulesTotal, 'subtitle' => ($isLaravelProject ? 'Laravel rule pack + ' : '').'CheckMyCode custom rules · '.\App\Scanning\ProjectDetector::label($scanProjectType ?? 'unknown'), 'promptTab' => 'rules'])
-    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+    <div class="m-pad" style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @include('livewire.partials.gitignored-note')
         @if (!empty($results['suppressed']))
           <details style="padding:12px 16px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:8px;font-size:12px;color:var(--fg-2);line-height:1.5;">
@@ -902,7 +906,7 @@
 @elseif ($activeTab === 'config')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
     @include('livewire.partials.tab-header', ['title' => 'Configuration & IaC', 'count' => $configTotal, 'subtitle' => 'Trivy · Dockerfile, Kubernetes, Terraform, CloudFormation, Helm', 'promptTab' => 'config'])
-    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+    <div class="m-pad" style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @forelse ($results['trivy_config']['findings'] ?? [] as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'trivy_config', 'icon' => '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4"/>'])
         @empty
@@ -915,7 +919,7 @@
 @elseif ($activeTab === 'workflows')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
     @include('livewire.partials.tab-header', ['title' => 'Workflow security', 'count' => $workflowsTotal, 'subtitle' => 'zizmor · GitHub Actions injection, triggers, permissions, pinning', 'promptTab' => 'workflows'])
-    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+    <div class="m-pad" style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @forelse ($results['workflows']['findings'] ?? [] as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'workflows', 'icon' => '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M6 8.5v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M12 12.5v3"/>'])
         @empty
@@ -928,12 +932,12 @@
 @elseif ($activeTab === 'lifecycle')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
     @include('livewire.partials.tab-header', ['title' => 'Lifecycle support', 'count' => $lifecycleTotal, 'subtitle' => 'endoflife.date · runtimes and frameworks', 'promptTab' => 'lifecycle'])
-    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+    <div class="m-pad" style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
         @foreach ($results['endoflife']['findings'] ?? [] as $finding)
           @include('livewire.partials.finding-card', ['finding' => $finding, 'scanner' => 'endoflife', 'icon' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'])
         @endforeach
         @if (!empty($results['endoflife']['components']))
-          <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;margin-top:6px;">
+          <div class="m-table" style="--table-min:820px;border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;margin-top:6px;">
             <div style="display:grid;grid-template-columns:180px 120px 1fr 170px 140px;padding:10px 16px;border-bottom:1px solid var(--line-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);background:var(--bg-1);">
               <span>Component</span><span>Version</span><span>Status</span><span>Security support ends</span><span>Latest</span>
             </div>
@@ -958,9 +962,9 @@
 @elseif ($activeTab === 'licenses')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
     @include('livewire.partials.tab-header', ['title' => 'Flagged licenses', 'count' => $licensesTotal, 'subtitle' => 'Trivy · copyleft and restricted licenses (not part of the grade)', 'promptTab' => 'licenses'])
-    <div style="padding:16px 32px 32px;">
+    <div class="m-pad" style="padding:16px 32px 32px;">
       @if (!empty($results['licenses']['findings']))
-        <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
+        <div class="m-table" style="--table-min:760px;border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
           <div style="display:grid;grid-template-columns:84px 1fr 200px 140px 1fr;padding:10px 16px;border-bottom:1px solid var(--line-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);background:var(--bg-1);">
             <span>Severity</span><span>Package</span><span>License</span><span>Category</span><span>Source</span>
           </div>
@@ -984,21 +988,21 @@
 {{-- ENV AUDIT ------------------------------------------------------------ --}}
 @elseif ($activeTab === 'env_audit')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    <div style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
+    <div class="m-tabhead" style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Environment audit</h2>
         <span class="mono" style="font-size:12px;color:var(--fg-3);">{{ $envTotal }} issues</span>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">.env · variables checked</span>
         @include('livewire.partials.fix-prompt-button', ['tab' => 'env_audit'])
     </div>
-    <div style="padding:16px 32px 32px;">
+    <div class="m-pad" style="padding:16px 32px 32px;">
       @if (!empty($results['env_audit']['local_only']))
         <div style="padding:12px 16px;margin-bottom:12px;background:color-mix(in srgb,var(--sev-low) 8%,transparent);border:1px solid color-mix(in srgb,var(--sev-low) 22%,transparent);border-radius:8px;font-size:12px;color:var(--fg-2);line-height:1.5;">
           Your <span class="mono">.env</span> is gitignored, so these are your <strong style="color:var(--fg-1);">local</strong> settings and they don't affect the grade. Make sure your production environment doesn't use them (for example <span class="mono">APP_DEBUG=true</span>).
         </div>
       @endif
       @if (!empty($results['env_audit']['findings']))
-        <div style="border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
+        <div class="m-table" style="--table-min:640px;border:1px solid var(--line-1);border-radius:10px;background:var(--bg-2);overflow:hidden;">
           <div style="display:grid;grid-template-columns:22px 200px 1fr 180px;padding:10px 16px;border-bottom:1px solid var(--line-1);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--fg-3);background:var(--bg-1);">
             <span></span><span>Key</span><span>Value</span><span>Note</span>
           </div>
@@ -1034,13 +1038,13 @@
 {{-- CODE QUALITY --------------------------------------------------------- --}}
 @elseif ($activeTab === 'code_quality')
 <div class="scroll" style="flex:1;overflow-y:auto;background:var(--bg-1);">
-    <div style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
+    <div class="m-tabhead" style="display:flex;align-items:baseline;gap:12px;padding:20px 32px 16px;border-bottom:1px solid var(--line-2);">
         <h2 class="serif" style="margin:0;font-size:22px;color:var(--fg-1);letter-spacing:-0.01em;">Code quality</h2>
         <span style="flex:1;"></span>
         <span style="font-size:11.5px;color:var(--fg-3);">Best practice suggestions</span>
         @include('livewire.partials.fix-prompt-button', ['tab' => 'code_quality'])
     </div>
-    <div style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
+    <div class="m-pad" style="padding:16px 32px 32px;display:flex;flex-direction:column;gap:10px;">
       <div style="padding:12px 16px;background:color-mix(in srgb,#c69dff 8%,transparent);border:1px solid color-mix(in srgb,#c69dff 20%,transparent);border-radius:8px;font-size:12px;color:var(--fg-2);">
         These are code quality suggestions, not security issues. They don't affect your security grade.
       </div>
@@ -1080,7 +1084,7 @@
     </div>
 </div>
 </div>
-<div x-show="error" x-cloak><div style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:45;max-width:560px;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-2);border:1px solid color-mix(in srgb,var(--sev-critical) 40%,var(--line-1));border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.4);font-size:12.5px;color:var(--fg-1);">
+<div x-show="error" x-cloak><div style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:45;width:max-content;max-width:min(560px,calc(100vw - 32px));display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-2);border:1px solid color-mix(in srgb,var(--sev-critical) 40%,var(--line-1));border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.4);font-size:12.5px;color:var(--fg-1);">
     <span style="color:var(--sev-critical);">✗</span>
     <span x-text="error" style="flex:1;"></span>
     <button type="button" @click="error = null" style="color:var(--fg-3);">×</button>
@@ -1120,7 +1124,7 @@
 {{-- ── Ignore modal ─────────────────────────────────────────────────── --}}
 @if ($pendingIgnoreKey)
 <div style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">
-    <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:14px;padding:24px;width:384px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+    <div style="background:var(--bg-2);border:1px solid var(--line-1);border-radius:14px;padding:24px;width:384px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,0.4);">
         <h3 style="font-size:14px;font-weight:600;color:var(--fg-1);margin:0 0 8px;">Ignore this finding?</h3>
         <p style="font-size:12px;color:var(--fg-3);margin:0 0 16px;line-height:1.5;">This finding will still appear in future scans but will be labeled as ignored.</p>
         <label style="font-size:11.5px;color:var(--fg-3);display:block;margin-bottom:6px;">Reason (optional)</label>

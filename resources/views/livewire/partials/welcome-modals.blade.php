@@ -21,18 +21,18 @@
 {{-- ── Welcome (first visit) ─────────────────────────────────────────── --}}
 <div x-show="showWelcome" x-cloak>
 <div @keydown.escape.window="dismissWelcome()" @click.self="dismissWelcome()"
-     style="position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,4,3,0.72);backdrop-filter:blur(6px);">
+     class="m-modal-wrap" style="position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,4,3,0.72);backdrop-filter:blur(6px);">
     <div role="dialog" aria-modal="true" aria-labelledby="welcome-title"
          style="position:relative;width:760px;max-width:100%;max-height:calc(100vh - 48px);overflow:auto;background:var(--bg-1);border:1px solid var(--line-1);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,0.55);" class="scroll">
         <div style="position:absolute;top:-120px;left:50%;transform:translateX(-50%);width:520px;height:260px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 28%,transparent),transparent);pointer-events:none;"></div>
         <button type="button" @click="dismissWelcome()" aria-label="Close" style="position:absolute;top:14px;right:16px;color:var(--fg-3);font-size:20px;line-height:1;z-index:1;">×</button>
 
-        <div style="position:relative;padding:40px 44px 28px;text-align:center;">
+        <div class="m-hero" style="position:relative;padding:40px 44px 28px;text-align:center;">
             <div style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;border:1px solid var(--line-1);background:var(--bg-2);font-size:11.5px;color:var(--fg-2);margin-bottom:22px;">
                 <span style="width:6px;height:6px;border-radius:50%;background:var(--sev-ok);display:block;"></span>
                 Free &amp; open source · No account needed
             </div>
-            <h2 id="welcome-title" class="serif" style="margin:0;font-size:46px;line-height:1.05;font-weight:400;color:var(--fg-1);letter-spacing:-0.02em;">
+            <h2 id="welcome-title" class="serif m-hero-title" style="margin:0;font-size:46px;line-height:1.05;font-weight:400;color:var(--fg-1);letter-spacing:-0.02em;">
                 Find security issues<br><span style="color:var(--accent);">before you ship.</span>
             </h2>
             <p style="margin:16px auto 0;max-width:540px;font-size:15px;line-height:1.6;color:var(--fg-2);">
@@ -40,7 +40,7 @@
             </p>
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 32px;">
+        <div class="m-grid1" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 32px;">
             @foreach ($features as [$title, $text, $color, $icon])
                 <div style="padding:14px 15px;background:var(--bg-2);border:1px solid var(--line-1);border-radius:12px;">
                     <div style="width:28px;height:28px;border-radius:8px;display:grid;place-items:center;margin-bottom:10px;background:color-mix(in srgb,{{ $color }} 14%,transparent);">
@@ -84,17 +84,17 @@
 {{-- ── How it works ──────────────────────────────────────────────────── --}}
 <div x-show="showHowItWorks" x-cloak>
 <div @keydown.escape.window="showHowItWorks = false" @click.self="showHowItWorks = false"
-     style="position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,4,3,0.72);backdrop-filter:blur(6px);">
+     class="m-modal-wrap" style="position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,4,3,0.72);backdrop-filter:blur(6px);">
     <div role="dialog" aria-modal="true" aria-labelledby="how-title" class="scroll"
          style="position:relative;width:700px;max-width:100%;max-height:calc(100vh - 48px);overflow:auto;background:var(--bg-1);border:1px solid var(--line-1);border-radius:18px;box-shadow:0 30px 90px rgba(0,0,0,0.55);">
         <button type="button" @click="showHowItWorks = false" aria-label="Close" style="position:absolute;top:14px;right:16px;color:var(--fg-3);font-size:20px;line-height:1;">×</button>
-        <div style="padding:34px 40px 8px;">
+        <div class="m-pad" style="padding:34px 40px 8px;">
             <div style="font-size:10.5px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent-hi);margin-bottom:8px;">How it works</div>
             <h2 id="how-title" class="serif" style="margin:0 0 6px;font-size:32px;font-weight:400;color:var(--fg-1);letter-spacing:-0.015em;">From folder to fixes in four steps</h2>
             <p style="margin:0;font-size:13.5px;color:var(--fg-3);">The same scanner runs here, in the desktop app, in the CLI and in CI.</p>
         </div>
 
-        <ol style="list-style:none;margin:0;padding:18px 40px 4px;display:flex;flex-direction:column;gap:0;">
+        <ol class="m-pad" style="list-style:none;margin:0;padding:18px 40px 4px;display:flex;flex-direction:column;gap:0;">
             @foreach ($steps as $i => [$title, $text])
                 <li style="display:grid;grid-template-columns:36px 1fr;gap:16px;">
                     <div style="display:flex;flex-direction:column;align-items:center;">
@@ -109,12 +109,12 @@
             @endforeach
         </ol>
 
-        <div style="margin:0 40px;padding:14px 16px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line-1);font-size:12.5px;line-height:1.6;color:var(--fg-2);">
+        <div class="m-inset" style="margin:0 40px;padding:14px 16px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line-1);font-size:12.5px;line-height:1.6;color:var(--fg-2);">
             <strong style="color:var(--fg-1);">Want nothing to leave your machine?</strong>
             Run the same scanner locally with the desktop app or <span class="mono" style="color:var(--fg-1);">docker run --rm -v "$PWD:/src" ghcr.io/aliuwahab/checkmycode scan /src</span>, add it to CI, or self-host this site. It's all open source.
         </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:22px 40px 28px;flex-wrap:wrap;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:22px 40px 28px;flex-wrap:wrap;" class="m-pad">
             <div style="display:flex;gap:14px;font-size:12.5px;">
                 <button type="button" @click="showHowItWorks = false; showPrivacy = true" style="color:var(--sev-ok);text-decoration:underline;text-underline-offset:2px;">What happens to my code?</button>
                 <a href="{{ config('checkmycode.github_url') }}" target="_blank" rel="noopener" style="color:var(--fg-2);">Source on GitHub</a>

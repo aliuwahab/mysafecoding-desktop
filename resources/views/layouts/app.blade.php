@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=1400">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('checkmycode.mode') === 'web' ? 'CheckMyCode — Open-Source Security Scanner' : 'CheckMyCode — Local Security Scanner' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -81,6 +81,39 @@
             animation: sweep 1.6s ease-in-out infinite;
         }
         .tab-active-bar { position: absolute; bottom: -1px; left: 8px; right: 8px; height: 1.5px; background: var(--accent); }
+
+        /* ── Small screens: drawer sidebar, wrapping toolbars, stacked cards, sideways-scrolling tables ── */
+        .m-menu { display: none !important; }
+        .m-backdrop { display: none; }
+        @media (max-width: 860px) {
+            .app-root { height: 100dvh !important; }
+            .m-menu { display: inline-flex !important; }
+            .m-titlebar { grid-template-columns: auto minmax(0, 1fr) auto !important; padding: 0 10px !important; gap: 8px !important; }
+            .m-crumb { min-width: 0 !important; max-width: none !important; }
+            .m-sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 55; height: 100% !important; width: 280px !important; max-width: 85vw; transform: translateX(-100%); transition: transform 220ms ease; box-shadow: 0 0 60px rgba(0,0,0,0.5); }
+            .nav-open .m-sidebar { transform: none; }
+            .nav-open .m-backdrop { display: block; position: fixed; inset: 0; z-index: 54; background: rgba(0,0,0,0.55); }
+            .m-configbar { flex-wrap: wrap; padding: 10px 12px !important; gap: 8px !important; }
+            .m-pick span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .m-configbar > button:last-child { margin-left: auto; }
+            .m-exclusions { order: 5; flex-basis: 100% !important; overflow-x: auto !important; scrollbar-width: none; }
+            .m-privacy { flex-wrap: wrap; padding: 8px 12px !important; row-gap: 4px !important; }
+            .m-privacy > span[style*="flex:1"] { display: none; }
+            .m-logrow { grid-template-columns: 76px 1fr !important; gap: 10px !important; padding: 2px 12px !important; }
+            .m-hide { display: none !important; }
+            .m-tabhead { flex-wrap: wrap; padding: 16px 16px 12px !important; row-gap: 6px !important; }
+            .m-pad { padding-left: 16px !important; padding-right: 16px !important; }
+            .m-stack { grid-template-columns: 1fr !important; }
+            .m-sevrow { grid-template-columns: 110px 1fr 32px !important; gap: 8px !important; }
+            .m-grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; word-break: break-all; }
+            .m-grid1 { grid-template-columns: 1fr !important; padding: 0 16px !important; }
+            .m-table { overflow-x: auto !important; }
+            .m-table > * { min-width: var(--table-min, 800px); }
+            .m-hero { padding: 36px 20px 22px !important; }
+            .m-hero-title { font-size: 34px !important; }
+            .m-modal-wrap { padding: 12px !important; }
+            .m-inset { margin: 0 16px !important; }
+        }
     </style>
 </head>
 <body>
