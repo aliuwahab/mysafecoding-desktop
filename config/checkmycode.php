@@ -91,6 +91,6 @@ return [
     'ci_workflow' => filter_var(env('CHECKMYCODE_CI_WORKFLOW', false), FILTER_VALIDATE_BOOL),
 
     // Shown in the sidebar: CheckMyCode is free and open source.
-    'github_url' => env('CHECKMYCODE_GITHUB_URL', 'https://github.com/aliuwahab'),
+    'github_url' => env('CHECKMYCODE_GITHUB_URL', 'https://github.com/aliuwahab/mysafecoding-desktop'),
     'sponsor_url' => env('CHECKMYCODE_SPONSOR_URL', 'https://github.com/sponsors/aliuwahab'),
 ];

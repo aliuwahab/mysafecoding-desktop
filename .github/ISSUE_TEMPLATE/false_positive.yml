@@ -1,0 +1,41 @@
+name: False positive
+description: A finding that isn't a real issue in your project
+labels: ["false positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! False-positive reports are how the rules get better. **Do not paste secrets, private source code or customer data.** A minimal snippet that reproduces the pattern is ideal.
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      description: Shown on the finding, e.g. `laravel.blade.raw-output`, `checkmycode.js.cors-all-origins`, a Semgrep check id or a CVE.
+    validations:
+      required: true
+  - type: dropdown
+    id: tab
+    attributes:
+      label: Tab
+      options: [Dependencies, Code, Secrets, Rules, Config, Workflows, Lifecycle, .env, Quality, Licenses]
+    validations:
+      required: true
+  - type: input
+    id: stack
+    attributes:
+      label: Framework and version
+      placeholder: e.g. Laravel 13.38, Next.js 15, Django 5.2
+  - type: textarea
+    id: snippet
+    attributes:
+      label: Minimal code that triggers it
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it's safe
+      description: What protects it (Form Request, middleware, sanitizer, attribute, …)?
+    validations:
+      required: true

@@ -1,0 +1,31 @@
+name: Bug report
+description: Something in CheckMyCode doesn't work as expected
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options: [Web (checkmycode.dev), Self-hosted web, Desktop app, CLI, Docker image, CI workflow]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: textarea
+    id: logs
+    attributes:
+      label: Scan log or error output
+      description: Remove anything private first.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit

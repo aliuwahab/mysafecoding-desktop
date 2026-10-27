@@ -1,7 +1,7 @@
 # CheckMyCode
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ff6b9a?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/aliuwahab)
-[![GitHub followers](https://img.shields.io/github/followers/aliuwahab?style=social)](https://github.com/aliuwahab)
+[![GitHub stars](https://img.shields.io/github/stars/aliuwahab/mysafecoding-desktop?style=social)](https://github.com/aliuwahab/mysafecoding-desktop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **Free and open source.** Scan in the browser at **[checkmycode.dev](https://checkmycode.dev)** with no account, or run it locally with the desktop app, the CLI or Docker.
@@ -129,12 +129,12 @@ composer run web     # web mode: server + queue worker + vite
 php artisan test
 ```
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) to add a stack, a rule or an export format, and [WARP.md](./WARP.md) for the roadmap.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) to add a stack, a rule or an export format, and [ROADMAP.md](./ROADMAP.md) for the roadmap.
 
 ## Support the project
 
 CheckMyCode is free, has no paid tier and doesn't keep your code. If it saves you time or catches something before production:
 
-- 👋 **[Follow on GitHub](https://github.com/aliuwahab)** for updates
+- ⭐ **[Star the repo](https://github.com/aliuwahab/mysafecoding-desktop)** so other developers find it
 - ❤️ **[Sponsor on GitHub](https://github.com/sponsors/aliuwahab)** to keep the hosted scanner running and new rules coming
-- 🐛 Report false positives and contribute rules (see [CONTRIBUTING.md](./CONTRIBUTING.md))
+- 🐛 [Report a false positive](https://github.com/aliuwahab/mysafecoding-desktop/issues/new?template=false_positive.yml) or contribute rules (see [CONTRIBUTING.md](./CONTRIBUTING.md))

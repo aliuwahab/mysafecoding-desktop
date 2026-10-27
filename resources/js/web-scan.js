@@ -125,10 +125,19 @@ document.addEventListener('alpine:init', () => {
         busy: false,
         phase: '',
         showPrivacy: false,
+        showWelcome: false,
+        showHowItWorks: false,
         error: null,
         dragging: false,
 
         init() {
+            // First visit in this browser: explain what CheckMyCode is.
+            try {
+                this.showWelcome = window.localStorage.getItem('checkmycode.welcomed') !== '1';
+            } catch (e) {
+                this.showWelcome = false;
+            }
+
             this.$wire.on('exclusions-changed', ({ exclusions }) => {
                 this.exclusions = exclusions;
                 this.applyFilters();
@@ -138,6 +147,15 @@ document.addEventListener('alpine:init', () => {
                     this.setSelection(null, [], 0);
                 }
             });
+        },
+
+        dismissWelcome() {
+            this.showWelcome = false;
+            try {
+                window.localStorage.setItem('checkmycode.welcomed', '1');
+            } catch (e) {
+                // storage blocked: the modal simply shows again next time
+            }
         },
 
         get selectionSummary() {

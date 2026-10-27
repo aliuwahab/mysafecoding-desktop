@@ -1,0 +1,15 @@
+name: Rule or feature request
+description: A new rule, stack, scanner or feature
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: For a new rule, include a vulnerable example and a safe example.

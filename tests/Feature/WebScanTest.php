@@ -161,11 +161,14 @@ class WebScanTest extends TestCase
             ->assertSee('What happens to my code?')
             ->assertSee('Deleted immediately:')
             ->assertDontSee('Install via Homebrew')
-            ->assertSee('https://github.com/aliuwahab"', false)
+            ->assertSee('https://github.com/aliuwahab/mysafecoding-desktop', false)
             ->assertSee('https://github.com/sponsors/aliuwahab', false)
             ->assertDontSee('Hosted scan')
             ->assertDontSee('CI YAML')
-            ->assertDontSee('⌘');
+            ->assertDontSee('⌘')
+            ->assertSee('Find security issues')
+            ->assertSee('From folder to fixes in four steps')
+            ->assertSee('How it works');
     }
 
     public function test_terms_page_explains_code_is_not_stored_and_includes_the_license(): void

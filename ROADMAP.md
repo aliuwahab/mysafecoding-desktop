@@ -1,6 +1,6 @@
-# CheckMyCode — Product Roadmap (WARP)
+# CheckMyCode Roadmap
 
-This document tracks the feature roadmap for CheckMyCode, the free open-source local security scanner for popular languages and frameworks.
+What is shipped and what is planned for CheckMyCode. Ideas and pull requests are welcome; see CONTRIBUTING.md.
 
 ## Vision
 
