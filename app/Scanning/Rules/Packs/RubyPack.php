@@ -86,7 +86,10 @@ class RubyPack extends RulePack
                 'fix' => 'Use bind parameters (find_by_sql(["... = ?", v])), hash conditions, or Arel; allowlist column names for order().',
             ],
             [
-                'pattern' => '/\.html_safe\b|\braw\s*\(|<%==/',
+                'pattern' => '/\.html_safe\b|(?<![.:\w])raw\s*\(|<%==/',
+                // Not flagged: fixed string literals, translations without arguments,
+                // yield/content_for blocks and values that already went through sanitize.
+                'unless' => '/(["\'][^"\'#]*["\']|\bt\(\s*["\'][^"\']*["\']\s*\)|\b(yield|content_for)\([^)]*\)|\b(sanitize|safe_join|strip_tags)\([^)]*\))\.html_safe\b|(?<![.:\w])raw\s*\(\s*(["\'][^"\'#]*["\']\s*\)|sanitize\(|t\(\s*["\'][^"\']*["\']\s*\)\s*\))/',
                 'rule_id' => 'checkmycode.rails.html-safe',
                 'title' => 'Output marked html_safe / raw (escaping disabled)',
                 'severity' => 'high',

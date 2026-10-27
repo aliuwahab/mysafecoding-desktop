@@ -102,6 +102,10 @@ class RulePackTest extends TestCase
             // Ruby / Rails
             'rails order sql' => ['rails', 'app/models/u.rb', 'User.order("#{params[:sort]} ASC")', 'rails.sql-injection-raw', 'User.order(created_at: :desc)'],
             'rails html_safe' => ['rails', 'app/views/p.html.erb', '<%= comment.body.html_safe %>', 'rails.html-safe', '<%= comment.body %>'],
+            'rails html_safe literal' => ['rails', 'app/views/p.html.erb', '<%= markdown.render(text).html_safe %>', 'rails.html-safe', '<%= label_tag name, "&nbsp;".html_safe %>'],
+            'rails html_safe interpolated' => ['rails', 'app/views/p.html.erb', '<%= "<b>#{user.name}</b>".html_safe %>', 'rails.html-safe', '<%= yield(:title).html_safe %>'],
+            'rails raw' => ['rails', 'app/views/p.html.erb', '<%= raw(@post.body) %>', 'rails.html-safe', '<%= raw(sanitize(@post.body)) %>'],
+            'rails arel raw' => ['rails', 'app/helpers/posts_helper.rb', 'raw(@post.body)', 'rails.html-safe', 'scope = Arel.sql("x").raw(true)'],
             'rails csrf' => ['rails', 'app/controllers/a_controller.rb', 'skip_before_action :verify_authenticity_token', 'rails.csrf-disabled', null],
             'rails redirect' => ['rails', 'app/controllers/a_controller.rb', 'redirect_to params[:return_to]', 'rails.open-redirect', 'redirect_to root_path'],
             'rails send_file' => ['rails', 'app/controllers/a_controller.rb', 'send_file params[:path]', 'rails.path-traversal', null],
