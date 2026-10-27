@@ -192,6 +192,8 @@ class RulePackTest extends TestCase
             'ex eval' => ['phoenix', 'lib/app/calc.ex', 'Code.eval_string(expr)', 'elixir.code-eval', null],
             'ex binary_to_term' => ['elixir', 'lib/app/s.ex', ':erlang.binary_to_term(data)', 'elixir.unsafe-binary-to-term', ':erlang.binary_to_term(data, [:safe])'],
             'ex atoms' => ['phoenix', 'lib/app/s.ex', 'String.to_atom(params["sort"])', 'elixir.atom-exhaustion', 'String.to_existing_atom(params["sort"])'],
+            'ex atoms piped' => ['phoenix', 'lib/app_web/live/index.ex', 'sort = conn.params["sort"] |> String.to_atom()', 'elixir.atom-exhaustion', 'if params["sort"] in @sorts, do: String.to_atom(params["sort"])'],
+            'ex atoms internal' => ['elixir', 'lib/app/users.ex', 'String.to_atom(params["sort"])', 'elixir.atom-exhaustion', 'op = String.to_atom("old_#{flag}")'],
             'ex shell' => ['elixir', 'lib/app/s.ex', ':os.cmd(String.to_charlist(cmd))', 'elixir.shell-command', 'System.cmd("convert", [input])'],
             'ex sql' => ['phoenix', 'lib/app/q.ex', 'Repo.query("SELECT * FROM users WHERE name = \'#{name}\'")', 'elixir.sql-injection', 'Repo.query("SELECT * FROM users WHERE name = $1", [name])'],
             'ex fragment' => ['phoenix', 'lib/app/q.ex', 'where: fragment("lower(#{field}) = ?", ^v)', 'elixir.sql-injection', 'where: fragment("lower(?) = ?", u.name, ^v)'],

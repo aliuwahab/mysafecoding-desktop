@@ -44,9 +44,12 @@ class ElixirPack extends RulePack
                 'fix' => 'Use Plug.Crypto.non_executable_binary_to_term(bin, [:safe]), or JSON for untrusted data.',
             ],
             [
-                'pattern' => '/\bString\.to_atom\s*\(|\bList\.to_atom\s*\(|:erlang\.binary_to_atom\s*\(/',
+                // Only request data turned into atoms: interpolating internal values
+                // ("old_#{flag}") or allowlisted input cannot fill the atom table.
+                'pattern' => '/\b(String\.to_atom|List\.to_atom|:erlang\.(binary|list)_to_atom)\s*\([^)]*\b(params|conn\.|socket\.assigns|payload|body_params|query_params|user_input)\b|\b(params|conn\.(params|query_params|body_params)|payload)\b[^|]*\|>\s*(String|List)\.to_atom\b/',
+                'unless' => '/\bin\s+@?\w+/',
                 'rule_id' => 'checkmycode.elixir.atom-exhaustion',
-                'title' => 'Atoms created from dynamic strings',
+                'title' => 'Atoms created from request data',
                 'severity' => 'medium',
                 'category' => 'denial-of-service',
                 'why' => 'Atoms are never garbage collected; creating them from user input can crash the VM once the atom table fills.',
